@@ -21,8 +21,14 @@ router.post('/signup', async (req,res)=>{
     // honeypot: if another user was created from same IP, block the IP and reject signup
     const other = signupIp ? await models.User.findOne({ where: { signupIp } }) : null
     if(other){
-      await models.BlockedIP.upsert({ ip: signupIp, reason: 'multiple_signups' })
-      return res.status(403).json({ error: 'Signups from this IP are blocked' })
+      // if IP is whitelisted, skip blocking
+      const wh = signupIp ? await models.WhitelistedIP.findByPk(signupIp) : null
+      if(wh){
+        console.log('Signup attempt from whitelisted IP, allowing:', signupIp)
+      }else{
+        await models.BlockedIP.upsert({ ip: signupIp, reason: 'multiple_signups' })
+        return res.status(403).json({ error: 'Signups from this IP are blocked' })
+      }
     }
     const hashed = await bcrypt.hash(password, 10)
     const id = 'u'+Date.now()

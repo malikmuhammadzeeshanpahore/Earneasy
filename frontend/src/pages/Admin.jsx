@@ -7,6 +7,9 @@ export default function Admin(){
 
   const [deposits, setDeposits] = useState([])
   const [blocked, setBlocked] = useState([])
+  const [whitelist, setWhitelist] = useState([])
+  const [newIp, setNewIp] = useState('')
+  const [newNote, setNewNote] = useState('')
   const [users, setUsers] = useState([])
   const [transactions, setTransactions] = useState([])
 
@@ -18,6 +21,8 @@ export default function Admin(){
         if(r.deposits) setDeposits(r.deposits)
         const b = await api.adminGetBlocked()
         if(b.blocked) setBlocked(b.blocked)
+  const w = await api.adminGetWhitelist()
+  if(w.whitelist) setWhitelist(w.whitelist)
         const u = await api.adminGetUsers()
         if(u.users) setUsers(u.users)
         const t = await api.adminGetTransactions()
@@ -85,6 +90,39 @@ export default function Admin(){
                 <div key={b.ip} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <div className="small muted">{b.ip} — {b.reason}</div>
                   <button className="btn ghost" onClick={()=>unblock(b.ip)}>Unblock</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <h3>Whitelisted IPs</h3>
+          <div style={{marginBottom:8}}>
+            <input placeholder="IP or CIDR" value={newIp} onChange={e=>setNewIp(e.target.value)} style={{width:200,marginRight:8}} />
+            <input placeholder="note (optional)" value={newNote} onChange={e=>setNewNote(e.target.value)} style={{width:220,marginRight:8}} />
+            <button className="btn" onClick={async ()=>{
+              try{
+                await api.adminAddWhitelist({ ip: newIp, note: newNote })
+                setNewIp('')
+                setNewNote('')
+                const w = await api.adminGetWhitelist()
+                if(w.whitelist) setWhitelist(w.whitelist)
+              }catch(err){ console.error('Add whitelist failed', err) }
+            }}>Add</button>
+          </div>
+          {whitelist.length===0 ? <div className="small muted">No whitelisted IPs</div> : (
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {whitelist.map(w=> (
+                <div key={w.ip} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div className="small muted">{w.ip} — {w.note}</div>
+                  <button className="btn ghost" onClick={async ()=>{
+                    try{
+                      await api.adminRemoveWhitelist(w.ip)
+                      const nw = await api.adminGetWhitelist()
+                      if(nw.whitelist) setWhitelist(nw.whitelist)
+                    }catch(err){ console.error('Remove whitelist failed', err) }
+                  }}>Remove</button>
                 </div>
               ))}
             </div>

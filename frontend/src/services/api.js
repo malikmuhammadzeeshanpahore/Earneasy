@@ -109,6 +109,21 @@ export async function adminUnblock(ip){
   return res.json()
 }
 
+export async function adminGetWhitelist(){
+  const res = await fetch(BASE + '/admin/whitelist', { headers: { ...adminHeaders() } })
+  return res.json()
+}
+
+export async function adminAddWhitelist({ip,note}){
+  const res = await fetch(BASE + '/admin/whitelist', { method: 'POST', headers: { 'Content-Type':'application/json', ...adminHeaders() }, body: JSON.stringify({ ip, note }) })
+  return res.json()
+}
+
+export async function adminRemoveWhitelist(ip){
+  const res = await fetch(BASE + `/admin/whitelist/${encodeURIComponent(ip)}/remove`, { method: 'POST', headers: { ...adminHeaders() } })
+  return res.json()
+}
+
 export async function adminGetUsers(){
   const res = await fetch(BASE + '/admin/users', { headers: { ...adminHeaders() } })
   return res.json()
@@ -137,6 +152,7 @@ export default {
   // admin helpers
   adminGetDeposits, adminApproveDeposit, adminRejectDeposit,
   adminGetBlocked, adminUnblock, adminGetUsers, adminGetTransactions,
+  adminGetWhitelist, adminAddWhitelist, adminRemoveWhitelist,
   adminApproveWithdraw, adminRejectWithdraw,
   // secrets & auth
   setAdminSecret, setToken

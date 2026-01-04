@@ -51,8 +51,14 @@ app.post('/api/deposits', authenticate, upload.single('screenshot'), async (req,
     // honeypot: if there is existing deposit from same IP for a different user, block the IP and reject
     const other = await models.Deposit.findOne({ where: { submitIp } })
     if(other && other.userId !== req.user.id){
-      await models.BlockedIP.upsert({ ip: submitIp, reason: 'duplicate_deposit' })
-      return res.status(403).json({ error: 'Deposit blocked from this IP' })
+      // if IP is whitelisted, allow instead of blocking
+      const wh = submitIp ? await models.WhitelistedIP.findByPk(submitIp) : null
+      if(wh){
+        console.log('Deposit submitIp is whitelisted, skipping block:', submitIp)
+      }else{
+        await models.BlockedIP.upsert({ ip: submitIp, reason: 'duplicate_deposit' })
+        return res.status(403).json({ error: 'Deposit blocked from this IP' })
+      }
     }
     if(!amount || !transactionId) return res.status(400).json({ error: 'Missing required fields' })
     const deposit = await models.Deposit.create({
