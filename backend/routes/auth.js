@@ -40,9 +40,16 @@ router.post('/signup', async (req,res)=>{
       const refUser = await models.User.findOne({ where: { inviteCode: referral } })
       if(refUser) referredBy = refUser.id
     }
-    const user = await models.User.create({ id, name, email, phone, password: hashed, referralCode: referral || null, inviteCode, referredBy, signupIp, registrationBonusPending: true })
+    const user = await models.User.create({ id, name, email, phone, password: hashed, referralCode: referral || null, inviteCode, referredBy, signupIp, registrationBonusPending: false, registrationBonusClaimedAt: new Date() })
+    // give new user a registration bonus (50 PKR)
+    try{
+      const bonus = 50
+      user.wallet = (user.wallet || 0) + bonus
+      await user.save()
+      await models.Transaction.create({ id: 't'+Date.now(), userId: user.id, type:'registration_bonus', amount: bonus, meta: {} })
+    }catch(e){ console.error('Failed to credit signup bonus', e) }
     const token = createToken(user)
-    return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet }, token })
+    return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet, inviteCode: user.inviteCode }, token })
   }catch(e){ console.error(e); return res.status(500).json({ error:'server' }) }
 })
 
@@ -75,6 +82,20 @@ router.put('/me', authenticate, async (req,res)=>{
   if(payoutAccount !== undefined) req.user.payoutAccount = payoutAccount
   await req.user.save()
   return res.json({ user: { id: req.user.id, name: req.user.name, email: req.user.email, wallet: req.user.wallet, isActive: req.user.isActive, inviteCode: req.user.inviteCode, payoutName: req.user.payoutName, payoutMethod: req.user.payoutMethod, payoutAccount: req.user.payoutAccount } })
+})
+
+// change password (authenticated)
+router.post('/change-password', authenticate, async (req,res)=>{
+  try{
+    const { oldPassword, newPassword } = req.body || {}
+    if(!oldPassword || !newPassword) return res.status(400).json({ error: 'oldPassword and newPassword required' })
+    const ok = await bcrypt.compare(oldPassword, req.user.password)
+    if(!ok) return res.status(400).json({ error: 'Invalid current password' })
+    const hashed = await bcrypt.hash(newPassword, 10)
+    req.user.password = hashed
+    await req.user.save()
+    return res.json({ ok:true })
+  }catch(e){ console.error('Change password failed', e); return res.status(500).json({ error:'server' }) }
 })
 
 module.exports = router

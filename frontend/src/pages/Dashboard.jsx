@@ -21,6 +21,21 @@ export default function Dashboard(){
     load()
   },[])
 
+  const [pkgInfo, setPkgInfo] = useState(null)
+  useEffect(()=>{
+    async function loadPkg(){
+      try{
+        if(!user || !user.currentPackageId) return
+        const pkgs = await api.getPackages()
+        if(pkgs && pkgs.packages){
+          const p = pkgs.packages.find(x=>x.id === user.currentPackageId)
+          if(p) setPkgInfo(p)
+        }
+      }catch(e){ console.error('Could not load package info', e) }
+    }
+    loadPkg()
+  },[user])
+
   if(!user) return (
     <div className="bg-white/90 rounded-xl p-4 shadow-lg border max-w-3xl mx-auto">
       <h3 className="text-lg font-semibold">Not signed in</h3>
@@ -79,6 +94,7 @@ export default function Dashboard(){
             <div>
               <strong>{user.currentPackageId}</strong>
               <p className="text-muted text-sm">Daily: Rs {user.currentPackageId ? '—' : '—'}</p>
+              <p className="text-muted text-sm">Daily: Rs {pkgInfo ? Number(pkgInfo.dailyClaim||0).toFixed(2) : '—'}</p>
               <div className="mt-2">
                 <button className="inline-block px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white" onClick={claim}>Claim Daily</button>
               </div>
@@ -92,8 +108,17 @@ export default function Dashboard(){
           <h3 className="font-semibold">Referral</h3>
           <p className="text-sm text-slate-500">Invite code: <strong>{inviteCode}</strong></p>
           <div className="flex gap-2 mt-2">
-            <button className="inline-block px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white" onClick={()=>{ navigator.clipboard && navigator.clipboard.writeText(inviteCode); alert('Copied code') }}>Copy Code</button>
-            <button className="inline-block px-3 py-2 rounded-lg border border-slate-200 text-slate-800" onClick={()=>{ navigator.clipboard && navigator.clipboard.writeText(inviteLink); alert('Copied link') }}>Copy Link</button>
+            <button className="inline-block px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white" onClick={()=>{
+              if(!inviteCode) return alert('Invite code not ready')
+              navigator.clipboard && navigator.clipboard.writeText(inviteCode)
+              alert('Copied code: ' + inviteCode)
+            }}>Copy Code</button>
+            <button className="inline-block px-3 py-2 rounded-lg border border-slate-200 text-slate-800" onClick={()=>{
+              if(!inviteCode) return alert('Invite code not ready')
+              const link = window.location.origin + '/auth?ref=' + inviteCode
+              navigator.clipboard && navigator.clipboard.writeText(link)
+              alert('Copied link: ' + link)
+            }}>Copy Link</button>
           </div>
           <p className="text-sm text-slate-500 mt-2">Team rewards: L1 10% • L2 5% • L3 1%</p>
         </div>

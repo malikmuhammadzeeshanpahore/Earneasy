@@ -84,6 +84,11 @@ export async function updateMe(payload){
   return res.json()
 }
 
+export async function changePassword({ oldPassword, newPassword }){
+  const res = await fetch(BASE + '/auth/change-password', { method: 'POST', headers: { 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({ oldPassword, newPassword }) })
+  return res.json()
+}
+
 export async function claimDaily(){
   const res = await fetch(BASE + '/wallet/claim', { method: 'POST', headers: { ...authHeaders() } })
   return res.json()

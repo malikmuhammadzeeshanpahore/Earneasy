@@ -16,11 +16,23 @@ function SignUp({onSigned}){
       const urlRef = new URLSearchParams(window.location.search).get('ref')
       const r = await api.signup({ name, email, phone, password, referral: urlRef })
       if(r.error) return setErr(r.error)
-      // save token and user
-      localStorage.setItem('de_user', JSON.stringify(r.user))
+      // save token, fetch full profile, and handle registration bonus
       api.setToken(r.token)
       localStorage.setItem('de_token', r.token)
-      onSigned(r.user)
+      // fetch full profile from server (includes inviteCode, registrationBonusPending)
+      const me = await api.me()
+      if(me && me.user){
+        // if registration bonus pending, try to claim immediately
+        try{ if(me.user.registrationBonusPending){ await api.claimRegistration(); const refreshed = await api.me(); if(refreshed && refreshed.user) localStorage.setItem('de_user', JSON.stringify(refreshed.user)) }
+        }catch(e){ /* ignore claim errors */ }
+        // store final user
+        const finalUser = await api.me()
+        localStorage.setItem('de_user', JSON.stringify(finalUser.user))
+        onSigned(finalUser.user)
+      }else{
+        localStorage.setItem('de_user', JSON.stringify(r.user))
+        onSigned(r.user)
+      }
     }catch(e){setErr('Server error')}
   }
 
@@ -47,10 +59,21 @@ function SignIn({onSigned}){
     try{
       const r = await api.login({ email, password })
       if(r.error) return setErr(r.error)
-      localStorage.setItem('de_user', JSON.stringify(r.user))
       api.setToken(r.token)
       localStorage.setItem('de_token', r.token)
-      onSigned(r.user)
+      // fetch full profile and store
+      const me = await api.me()
+      if(me && me.user){
+        // if registration bonus pending, claim it
+        try{ if(me.user.registrationBonusPending){ await api.claimRegistration(); }
+        }catch(e){}
+        const finalUser = await api.me()
+        localStorage.setItem('de_user', JSON.stringify(finalUser.user))
+        onSigned(finalUser.user)
+      }else{
+        localStorage.setItem('de_user', JSON.stringify(r.user))
+        onSigned(r.user)
+      }
     }catch(e){setErr('Server error')}
   }
 

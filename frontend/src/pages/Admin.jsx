@@ -87,7 +87,7 @@ export default function Admin(){
 
   return (
     <div>
-      <h2>Admin Panel (Demo)</h2>
+      <h2>Admin Panel</h2>
       <div className="grid">
         <div className="card">
           <h3>Pending Deposits</h3>
