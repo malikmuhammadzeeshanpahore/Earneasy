@@ -40,9 +40,16 @@ router.post('/signup', async (req,res)=>{
       const refUser = await models.User.findOne({ where: { inviteCode: referral } })
       if(refUser) referredBy = refUser.id
     }
-    const user = await models.User.create({ id, name, email, phone, password: hashed, referralCode: referral || null, inviteCode, referredBy, signupIp, registrationBonusPending: true })
+    const user = await models.User.create({ id, name, email, phone, password: hashed, referralCode: referral || null, inviteCode, referredBy, signupIp, registrationBonusPending: false, registrationBonusClaimedAt: new Date() })
+    // give new user a registration bonus (50 PKR)
+    try{
+      const bonus = 50
+      user.wallet = (user.wallet || 0) + bonus
+      await user.save()
+      await models.Transaction.create({ id: 't'+Date.now(), userId: user.id, type:'registration_bonus', amount: bonus, meta: {} })
+    }catch(e){ console.error('Failed to credit signup bonus', e) }
     const token = createToken(user)
-    return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet }, token })
+    return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet, inviteCode: user.inviteCode }, token })
   }catch(e){ console.error(e); return res.status(500).json({ error:'server' }) }
 })
 

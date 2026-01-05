@@ -134,7 +134,18 @@ async function seed(){
     // tolerate seed errors (e.g., schema mismatch) and continue startup
     console.error('Admin seed failed (continuing):', e && e.message)
   }
+
+  // ensure all existing users have an invite code (for referral links)
+  try{
+    const { Op } = require('sequelize')
+    const missing = await User.findAll({ where: { [Op.or]: [{ inviteCode: null }, { inviteCode: '' }] } })
+    for(const u of missing){
+      u.inviteCode = 'INV' + Math.random().toString(36).substring(2,8).toUpperCase()
+      try{ await u.save() }catch(e){ console.error('Could not save inviteCode for user', u.id, e && e.message) }
+    }
+  }catch(e){ console.error('Could not assign invite codes to existing users', e && e.message) }
 }
+
 
 
 module.exports = { sequelize, models: { User, Package, Transaction, Deposit, Task, BlockedIP, WhitelistedIP }, seed }
