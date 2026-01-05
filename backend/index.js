@@ -122,7 +122,8 @@ async function start(){
     console.error('Could not ensure Deposits.packageId column:', e && e.message || e)
   }
 
-  app.listen(PORT, ()=> console.log('Backend running on', PORT))
+  // Listen on all interfaces so the server is reachable from external hosts
+  app.listen(PORT, '0.0.0.0', ()=> console.log('Backend running on', PORT, 'and bound to 0.0.0.0'))
 }
 
 start()
