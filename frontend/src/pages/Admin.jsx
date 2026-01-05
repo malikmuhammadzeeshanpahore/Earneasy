@@ -12,6 +12,7 @@ export default function Admin(){
   const [newNote, setNewNote] = useState('')
   const [users, setUsers] = useState([])
   const [transactions, setTransactions] = useState([])
+  const [withdraws, setWithdraws] = useState([])
 
   useEffect(()=>{
     async function load(){
@@ -27,12 +28,38 @@ export default function Admin(){
         if(u.users) setUsers(u.users)
         const t = await api.adminGetTransactions()
         if(t.transactions) setTransactions(t.transactions)
+        const wds = await api.adminGetWithdraws()
+        if(wds.withdraws) setWithdraws(wds.withdraws)
       }catch(e){
         console.error('Failed to load admin data', e)
       }
     }
     load()
   },[])
+
+  async function approveWithdraw(id){
+    try{
+      await api.adminApproveWithdraw(id)
+      const wds = await api.adminGetWithdraws()
+      if(wds.withdraws) setWithdraws(wds.withdraws)
+    }catch(e){ console.error('Approve withdraw failed', e) }
+  }
+
+  async function markSent(id){
+    try{
+      await api.adminMarkWithdrawSent(id)
+      const wds = await api.adminGetWithdraws()
+      if(wds.withdraws) setWithdraws(wds.withdraws)
+    }catch(e){ console.error('Mark sent failed', e) }
+  }
+
+  async function confirmWithdraw(id){
+    try{
+      await api.adminConfirmWithdraw(id)
+      const wds = await api.adminGetWithdraws()
+      if(wds.withdraws) setWithdraws(wds.withdraws)
+    }catch(e){ console.error('Confirm failed', e) }
+  }
 
   async function approve(id){
     try{
@@ -71,7 +98,12 @@ export default function Admin(){
                   <div>
                     <div><strong>${d.amount}</strong> — {d.method}</div>
                     <div className="small muted">Txn: {d.transactionId} • By: {d.userId}</div>
-                    {d.screenshot && <div style={{marginTop:8}}><img src={(import.meta.env.VITE_API_URL||'http://localhost:4000') + d.screenshot} alt="s" style={{maxWidth:200}}/></div>}
+                    {d.screenshot && <div style={{marginTop:8}}>
+                      <a href={(import.meta.env.VITE_API_URL||'http://localhost:4000') + d.screenshot} target="_blank" rel="noreferrer" style={{display:'inline-flex',alignItems:'center',gap:8}}>
+                        <img src={(import.meta.env.VITE_API_URL||'http://localhost:4000') + d.screenshot} alt="s" style={{maxWidth:140,borderRadius:8}}/>
+                        <span className="small muted"><i className="ri-eye-line"></i> Open screenshot</span>
+                      </a>
+                    </div>}
                   </div>
                   <div style={{display:'flex',flexDirection:'column',gap:8}}>
                     <button className="btn" onClick={()=>approve(d.id)}>Approve</button>
@@ -146,7 +178,28 @@ export default function Admin(){
           {transactions.length===0 ? <div className="small muted">No transactions</div> : (
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
               {transactions.map(tx=> (
-                <div key={tx.id} className="small muted">{tx.createdAt} — {tx.type} — ${tx.amount} — status: {tx.status} — user: {tx.userId}</div>
+                <div key={tx.id} className="small muted">{tx.createdAt} — {tx.type} — Rs {tx.amount} {tx.meta && tx.meta.fee ? `(fee: Rs ${tx.meta.fee} net: Rs ${tx.meta.net})` : ''} — status: {tx.status} — user: {tx.userId}</div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="card">
+          <h3>Withdraw Requests</h3>
+          {withdraws.length===0 ? <div className="small muted">No withdraw requests</div> : (
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {withdraws.map(w=> (
+                <div key={w.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <div className="small muted">User: {w.userId} — Requested: Rs {w.amount} — status: {w.status}</div>
+                    <div className="small muted">Account: {w.meta && w.meta.account ? w.meta.account : 'N/A'} — Fee: Rs {w.meta && w.meta.fee ? w.meta.fee : '—'} — Net: Rs {w.meta && w.meta.net ? w.meta.net : '—'}</div>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    {w.status === 'pending' && <button className="btn" onClick={()=>approveWithdraw(w.id)}>Approve</button>}
+                    {w.status === 'approved' && <button className="btn" onClick={()=>markSent(w.id)}>Mark Sent</button>}
+                    {w.status === 'sent' && <button className="btn" onClick={()=>confirmWithdraw(w.id)}>Confirm</button>}
+                    {(w.status === 'pending' || w.status === 'approved' || w.status === 'sent') && <button className="btn ghost" onClick={()=>api.adminRejectWithdraw(w.id).then(async ()=>{ const wds = await api.adminGetWithdraws(); if(wds.withdraws) setWithdraws(wds.withdraws) }).catch(e=>console.error(e))}>Reject</button>}
+                  </div>
+                </div>
               ))}
             </div>
           )}

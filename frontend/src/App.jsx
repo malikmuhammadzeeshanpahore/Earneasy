@@ -4,7 +4,6 @@ import Landing from './pages/Landing'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import Packages from './pages/Packages'
-import Tasks from './pages/Tasks'
 import Wallet from './pages/Wallet'
 import Referrals from './pages/Referrals'
 import Profile from './pages/Profile'
@@ -13,12 +12,15 @@ import SecretAdmin from './pages/SecretAdmin'
 import Deposit from './pages/Deposit'
 import NotFound from './pages/NotFound'
 import Header from './components/Header'
+import Footer from './components/Footer'
+import JoinChannelModal from './components/JoinChannelModal'
 import ErrorBoundary from './components/ErrorBoundary'
 
 export default function App(){
   return (
     <div>
       <Header />
+      <JoinChannelModal />
       <main className="container">
         <ErrorBoundary>
         <Routes>
@@ -26,7 +28,6 @@ export default function App(){
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/packages" element={<Packages />} />
-          <Route path="/tasks" element={<Tasks />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/deposit" element={<Deposit />} />
           <Route path="/referrals" element={<Referrals />} />
@@ -37,6 +38,7 @@ export default function App(){
         </Routes>
         </ErrorBoundary>
       </main>
+      <Footer />
     </div>
   )
 }

@@ -32,7 +32,15 @@ router.post('/signup', async (req,res)=>{
     }
     const hashed = await bcrypt.hash(password, 10)
     const id = 'u'+Date.now()
-    const user = await models.User.create({ id, name, email, phone, password: hashed, referralCode: referral || null, signupIp })
+    // generate an invite code for this user
+    const inviteCode = 'INV' + Math.random().toString(36).substring(2,8).toUpperCase()
+    // if referral is provided, try to resolve referring user by inviteCode
+    let referredBy = null
+    if(referral){
+      const refUser = await models.User.findOne({ where: { inviteCode: referral } })
+      if(refUser) referredBy = refUser.id
+    }
+    const user = await models.User.create({ id, name, email, phone, password: hashed, referralCode: referral || null, inviteCode, referredBy, signupIp })
     const token = createToken(user)
     return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet }, token })
   }catch(e){ console.error(e); return res.status(500).json({ error:'server' }) }
@@ -55,14 +63,14 @@ router.post('/login', async (req,res)=>{
 const { authenticate } = require('../middleware/auth')
 router.get('/me', authenticate, async (req,res)=>{
   const u = req.user
-  return res.json({ user: { id: u.id, name:u.name, email:u.email, role:u.role, wallet:u.wallet, isActive: u.isActive } })
+  return res.json({ user: { id: u.id, name:u.name, email:u.email, role:u.role, wallet:u.wallet, isActive: u.isActive, inviteCode: u.inviteCode, referredBy: u.referredBy, currentPackageId: u.currentPackageId, packageExpiresAt: u.packageExpiresAt } })
 })
 
 // update profile (name only for demo)
 router.put('/me', authenticate, async (req,res)=>{
   const { name } = req.body
   if(name){ req.user.name = name; await req.user.save() }
-  return res.json({ user: { id: req.user.id, name: req.user.name, email: req.user.email, wallet: req.user.wallet, isActive: req.user.isActive } })
+  return res.json({ user: { id: req.user.id, name: req.user.name, email: req.user.email, wallet: req.user.wallet, isActive: req.user.isActive, inviteCode: req.user.inviteCode } })
 })
 
 module.exports = router

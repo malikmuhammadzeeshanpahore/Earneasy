@@ -5,7 +5,7 @@ export default function Deposit(){
   const [accountHolder,setAccountHolder] = useState('')
   const [transactionId,setTransactionId] = useState('')
   const [amount,setAmount] = useState('')
-  const [method,setMethod] = useState('Bank Transfer')
+  const [method,setMethod] = useState('JazzCash')
   const [selectedPackage, setSelectedPackage] = useState('')
   const [file,setFile] = useState(null)
   const [deposits,setDeposits] = useState([])
@@ -38,6 +38,8 @@ export default function Deposit(){
   async function submit(e){
     e.preventDefault()
     try{
+      // Client-side validation: minimum top-up amount Rs700
+      if(!amount || Number(amount) < 700) return alert('Minimum top-up amount is Rs700')
       const r = await api.submitDeposit({ accountHolder, transactionId, amount, method, packageId: selectedPackage, screenshotFile: file })
       if(r.error) return alert(r.error)
       alert('Deposit submitted — pending admin approval')
@@ -48,6 +50,16 @@ export default function Deposit(){
   return (
     <div>
       <h2>Submit Deposit</h2>
+      <div className="card" style={{maxWidth:700, marginBottom:12}}>
+        <h4 className="font-semibold">Top-up Instructions:</h4>
+        <ol className="small muted" style={{marginTop:8}}>
+          <li>Top-up service is available 24/7.</li>
+          <li>Minimum top-up amount is Rs700.</li>
+          <li>Arrival time: Please upload your payment receipt immediately after payment. Funds will usually arrive within 5-30 minutes. If you have not received your funds within this time, please contact online customer service for assistance.</li>
+          <li>Do not save expired mobile phone numbers. If your top-up has expired, please place a new order.</li>
+          <li>Do not top up through channels outside the platform to avoid financial losses.</li>
+        </ol>
+      </div>
       <form className="card" onSubmit={submit} style={{maxWidth:700}}>
         <label className="small muted">Account holder name</label>
         <input value={accountHolder} onChange={e=>setAccountHolder(e.target.value)} style={{width:'100%',padding:8,margin:'8px 0'}} />
@@ -66,13 +78,18 @@ export default function Deposit(){
           ))}
         </select>
 
+        {/* Deposits are currently accepted via JazzCash only */}
         <label className="small muted">Method</label>
-        <select value={method} onChange={e=>setMethod(e.target.value)} style={{width:'100%',padding:8,margin:'8px 0'}}>
-          <option>Bank Transfer</option>
-          <option>JazzCash</option>
-          <option>EasyPaisa</option>
-          <option>PayPal</option>
-        </select>
+        <div className="card" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px'}}>
+          <div>
+            <div className="font-semibold">JazzCash</div>
+            <div className="text-sm text-muted">Send payment to this JazzCash number</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div className="text-lg font-bold">03344379353</div>
+            <button type="button" className="btn ghost" onClick={()=>{ navigator.clipboard && navigator.clipboard.writeText('03344379353'); alert('Number copied') }} style={{marginTop:8}}>Copy</button>
+          </div>
+        </div>
 
         <label className="small muted">Screenshot (proof)</label>
         <input type="file" onChange={e=>setFile(e.target.files[0])} style={{display:'block',margin:'8px 0'}} />
@@ -81,6 +98,15 @@ export default function Deposit(){
           <button className="btn">Submit deposit</button>
         </div>
       </form>
+
+      <div className="card mt-4">
+        <h4 className="font-semibold">Support & Channel</h4>
+        <p className="text-sm text-slate-600">Join our WhatsApp channel for announcements:</p>
+        <a href="https://whatsapp.com/channel/0029VbCMWJc6BIEZ4v0Sp82r" target="_blank" rel="noreferrer" className="text-brand mt-2 inline-block">Open WhatsApp Channel</a>
+        <p className="text-sm text-slate-600 mt-3">Customer service (WhatsApp):</p>
+        <a href="https://wa.me/+923344379353" target="_blank" rel="noreferrer" className="small">+92 334 4379353</a>
+      </div>
+      
 
       <div style={{marginTop:16}}>
         <h3>Your deposits</h3>

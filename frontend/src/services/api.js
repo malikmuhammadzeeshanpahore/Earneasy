@@ -57,6 +57,11 @@ export async function withdraw({amount,method,account}){
   return res.json()
 }
 
+export async function claimDaily(){
+  const res = await fetch(BASE + '/wallet/claim', { method: 'POST', headers: { ...authHeaders() } })
+  return res.json()
+}
+
 export async function submitDeposit({accountHolder, transactionId, amount, method, screenshotFile}){
   const form = new FormData()
   form.append('accountHolder', accountHolder)
@@ -144,15 +149,32 @@ export async function adminRejectWithdraw(id){
   return res.json()
 }
 
+export async function adminGetWithdraws(){
+  const res = await fetch(BASE + '/admin/withdraws', { headers: { ...adminHeaders() } })
+  return res.json()
+}
+
+export async function adminMarkWithdrawSent(id){
+  const res = await fetch(BASE + `/admin/withdraws/${id}/sent`, { method:'POST', headers: { ...adminHeaders() } })
+  return res.json()
+}
+
+export async function adminConfirmWithdraw(id){
+  const res = await fetch(BASE + `/admin/withdraws/${id}/complete`, { method:'POST', headers: { ...adminHeaders() } })
+  return res.json()
+}
+
 export function setToken(t){ token = t; if(t) localStorage.setItem('de_token', t); else localStorage.removeItem('de_token') }
 
 export default {
   signup, login, me, getPackages, buyPackage, getTasks, completeTask,
   getBalance, getTransactions, withdraw, submitDeposit, getMyDeposits,
+  claimDaily,
   // admin helpers
   adminGetDeposits, adminApproveDeposit, adminRejectDeposit,
   adminGetBlocked, adminUnblock, adminGetUsers, adminGetTransactions,
   adminGetWhitelist, adminAddWhitelist, adminRemoveWhitelist,
+  adminGetWithdraws, adminMarkWithdrawSent, adminConfirmWithdraw,
   adminApproveWithdraw, adminRejectWithdraw,
   // secrets & auth
   setAdminSecret, setToken

@@ -111,6 +111,34 @@ router.post('/withdraws/:id/approve', allowAdminOrSecret(async (req,res)=>{
   res.json({ ok:true })
 }))
 
+// list withdraw requests (for admin UI)
+router.get('/withdraws', allowAdminOrSecret(async (req,res)=>{
+  const txs = await models.Transaction.findAll({ where: { type: 'withdraw' }, order:[['createdAt','DESC']] })
+  res.json({ withdraws: txs })
+}))
+
+// mark withdraw as sent (admin indicates they have sent the payment externally)
+router.post('/withdraws/:id/sent', allowAdminOrSecret(async (req,res)=>{
+  const id = req.params.id
+  const t = await models.Transaction.findByPk(id)
+  if(!t) return res.status(404).json({ error:'Not found' })
+  if(t.type !== 'withdraw') return res.status(400).json({ error:'Not a withdraw' })
+  t.status = 'sent'
+  await t.save()
+  res.json({ ok:true })
+}))
+
+// confirm withdraw completed (admin confirms funds were delivered)
+router.post('/withdraws/:id/complete', allowAdminOrSecret(async (req,res)=>{
+  const id = req.params.id
+  const t = await models.Transaction.findByPk(id)
+  if(!t) return res.status(404).json({ error:'Not found' })
+  if(t.type !== 'withdraw') return res.status(400).json({ error:'Not a withdraw' })
+  t.status = 'completed'
+  await t.save()
+  res.json({ ok:true })
+}))
+
 // reject withdraw => refund
 router.post('/withdraws/:id/reject', allowAdminOrSecret(async (req,res)=>{
   const id = req.params.id

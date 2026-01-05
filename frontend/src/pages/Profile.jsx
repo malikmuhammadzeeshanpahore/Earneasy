@@ -36,13 +36,30 @@ export default function Profile(){
 
   return (
     <div className="card">
-      <h2>Profile</h2>
+      <h2>My Account</h2>
       <div style={{margin:'8px 0'}}>
         <label className="small muted">Name</label>
         <input value={name} onChange={e=>setName(e.target.value)} style={{display:'block',width:'100%',padding:8,marginTop:6}} />
       </div>
-      <div style={{marginTop:12}}>
-        <button className="btn" onClick={save}>Save</button>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
+        <button className="btn" onClick={save}><i className="ri-save-line" style={{marginRight:8}}></i> Save</button>
+        <button className="btn ghost" onClick={()=>window.location.href='/packages'}><i className="ri-stack-line" style={{marginRight:8}}></i> View Plans</button>
+        <button className="btn" onClick={()=>window.location.href='/wallet'}><i className="ri-coins-line" style={{marginRight:8}}></i> Balance / History</button>
+      </div>
+
+      <div style={{marginTop:16}}>
+        <h3 style={{margin:0}}>Withdrawal details</h3>
+        <p className="small muted">Set your preferred withdrawal account here. This will be used when requesting withdrawals.</p>
+        <div style={{marginTop:8}}>
+          <input placeholder="Account number / details" style={{width:'100%',padding:8}} />
+        </div>
+      </div>
+
+      <div style={{marginTop:16,display:'flex',gap:8,flexWrap:'wrap'}}>
+        <button className="btn ghost" onClick={()=>{ navigator.clipboard && navigator.clipboard.writeText(user.inviteCode || user.id); alert('Invite code copied') }}><i className="ri-link-m"></i> Copy Invite Code</button>
+        <button className="btn ghost" onClick={()=>{ navigator.clipboard && navigator.clipboard.writeText(window.location.origin + '/auth?ref=' + (user.inviteCode || user.id)); alert('Invite link copied') }}><i className="ri-share-line"></i> Copy Invite Link</button>
+        <button className="btn ghost" onClick={()=>{ /* placeholder for download */ alert('App download link copied'); navigator.clipboard && navigator.clipboard.writeText('https://example.com/app-download') }}><i className="ri-download-line"></i> App Download</button>
+        <button className="btn ghost" onClick={()=>{ localStorage.removeItem('de_user'); localStorage.removeItem('de_token'); window.location.href='/' }}><i className="ri-logout-box-line"></i> Logout</button>
       </div>
     </div>
   )

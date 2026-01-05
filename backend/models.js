@@ -13,6 +13,12 @@ const User = sequelize.define('User', {
   role: { type: DataTypes.STRING, defaultValue: 'user' },
   wallet: { type: DataTypes.FLOAT, defaultValue: 0 },
   referralCode: DataTypes.STRING,
+  inviteCode: { type: DataTypes.STRING, unique: true },
+  referredBy: DataTypes.STRING,
+  currentPackageId: DataTypes.STRING,
+  packageActivatedAt: DataTypes.DATE,
+  packageExpiresAt: DataTypes.DATE,
+  lastClaimedAt: DataTypes.DATE,
   signupIp: DataTypes.STRING,
   isActive: { type: DataTypes.BOOLEAN, defaultValue: false }
 })
@@ -25,8 +31,8 @@ const Package = sequelize.define('Package', {
   name: DataTypes.STRING,
   price: DataTypes.FLOAT,
   duration: DataTypes.INTEGER,
-  dailyTasks: DataTypes.INTEGER,
-  dailyRate: DataTypes.FLOAT
+  dailyClaim: DataTypes.FLOAT,
+  locked: { type: DataTypes.BOOLEAN, defaultValue: false }
 })
 
 const Transaction = sequelize.define('Transaction', {
@@ -84,9 +90,15 @@ User.hasMany(Deposit, { foreignKey: 'userId' })
 async function seed(){
   // seed packages, admin and some tasks
   const packages = [
-    { id:'basic', name:'Basic', price:10, duration:30, dailyTasks:5, dailyRate:0.5 },
-    { id:'premium', name:'Premium', price:50, duration:30, dailyTasks:10, dailyRate:1.2 },
-    { id:'vip', name:'VIP', price:100, duration:30, dailyTasks:20, dailyRate:3 }
+    { id:'p700', name:'Starter', price:700, duration:90, dailyClaim:130 },
+    { id:'p1600', name:'Bronze', price:1600, duration:90, dailyClaim:280 },
+    { id:'p2000', name:'Silver', price:2000, duration:90, dailyClaim:350 },
+    { id:'p4000', name:'Gold', price:4000, duration:90, dailyClaim:720 },
+    { id:'p8000', name:'Platinum', price:8000, duration:90, dailyClaim:1450 },
+    { id:'p12000', name:'Diamond', price:12000, duration:90, dailyClaim:2200 },
+    { id:'p20000', name:'Elite', price:20000, duration:90, dailyClaim:0, locked: true },
+    { id:'p40000', name:'Pro', price:40000, duration:90, dailyClaim:0, locked: true },
+    { id:'p80000', name:'Ultra', price:80000, duration:90, dailyClaim:0, locked: true }
   ]
   for(const p of packages){
     await Package.upsert(p)
@@ -103,7 +115,7 @@ async function seed(){
   const admin = await User.findOne({ where: { email: 'admin@demo' } })
   if(!admin){
     const hashed = await bcrypt.hash('adminpass', 10)
-    await User.create({ id:'admin', name:'Admin', email:'admin@demo', password: hashed, role:'admin', wallet:0, isActive: true })
+    await User.create({ id:'admin', name:'Admin', email:'admin@demo', password: hashed, role:'admin', wallet:0, isActive: true, inviteCode: 'ADMIN' })
   }
 }
 
