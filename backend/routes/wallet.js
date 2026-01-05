@@ -47,6 +47,21 @@ router.post('/withdraw', authenticate, async (req,res)=>{
   return res.json({ ok:true, wallet: req.user.wallet, fee, net })
 })
 
+// claim registration bonus
+router.post('/claim-registration', authenticate, async (req,res)=>{
+  try{
+    const user = req.user
+    if(!user.registrationBonusPending) return res.status(400).json({ error: 'No registration bonus available' })
+    const bonus = 50
+    user.wallet = (user.wallet || 0) + bonus
+    user.registrationBonusPending = false
+    user.registrationBonusClaimedAt = new Date()
+    await user.save()
+    await models.Transaction.create({ id: 't'+Date.now(), userId: user.id, type:'registration_bonus', amount: bonus, meta: {} })
+    return res.json({ ok:true, wallet: user.wallet, amount: bonus })
+  }catch(e){ console.error('Claim registration failed', e); return res.status(500).json({ error: 'server' }) }
+})
+
 // daily claim
 router.post('/claim', authenticate, async (req,res)=>{
   try{

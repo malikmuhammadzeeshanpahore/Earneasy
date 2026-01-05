@@ -89,6 +89,11 @@ export async function claimDaily(){
   return res.json()
 }
 
+export async function claimRegistration(){
+  const res = await fetch(BASE + '/wallet/claim-registration', { method: 'POST', headers: { ...authHeaders() } })
+  return res.json()
+}
+
 export async function submitDeposit({accountHolder, transactionId, amount, method, screenshotFile}){
   const form = new FormData()
   form.append('accountHolder', accountHolder)

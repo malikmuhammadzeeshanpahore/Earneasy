@@ -19,6 +19,9 @@ const User = sequelize.define('User', {
   payoutName: DataTypes.STRING,
   payoutMethod: DataTypes.STRING,
   payoutAccount: DataTypes.STRING,
+  // registration bonus tracking
+  registrationBonusPending: { type: DataTypes.BOOLEAN, defaultValue: false },
+  registrationBonusClaimedAt: DataTypes.DATE,
   currentPackageId: DataTypes.STRING,
   packageActivatedAt: DataTypes.DATE,
   packageExpiresAt: DataTypes.DATE,

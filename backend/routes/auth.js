@@ -40,7 +40,7 @@ router.post('/signup', async (req,res)=>{
       const refUser = await models.User.findOne({ where: { inviteCode: referral } })
       if(refUser) referredBy = refUser.id
     }
-    const user = await models.User.create({ id, name, email, phone, password: hashed, referralCode: referral || null, inviteCode, referredBy, signupIp })
+    const user = await models.User.create({ id, name, email, phone, password: hashed, referralCode: referral || null, inviteCode, referredBy, signupIp, registrationBonusPending: true })
     const token = createToken(user)
     return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet }, token })
   }catch(e){ console.error(e); return res.status(500).json({ error:'server' }) }
@@ -63,7 +63,7 @@ router.post('/login', async (req,res)=>{
 const { authenticate } = require('../middleware/auth')
 router.get('/me', authenticate, async (req,res)=>{
   const u = req.user
-  return res.json({ user: { id: u.id, name:u.name, email:u.email, role:u.role, wallet:u.wallet, isActive: u.isActive, inviteCode: u.inviteCode, referredBy: u.referredBy, currentPackageId: u.currentPackageId, packageExpiresAt: u.packageExpiresAt, payoutName: u.payoutName, payoutMethod: u.payoutMethod, payoutAccount: u.payoutAccount } })
+  return res.json({ user: { id: u.id, name:u.name, email:u.email, role:u.role, wallet:u.wallet, isActive: u.isActive, inviteCode: u.inviteCode, referredBy: u.referredBy, currentPackageId: u.currentPackageId, packageExpiresAt: u.packageExpiresAt, payoutName: u.payoutName, payoutMethod: u.payoutMethod, payoutAccount: u.payoutAccount, registrationBonusPending: u.registrationBonusPending } })
 })
 
 // update profile (name only for demo)
