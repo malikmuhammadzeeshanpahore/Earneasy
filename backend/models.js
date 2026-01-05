@@ -108,7 +108,7 @@ async function seed(){
     { id:'p80000', name:'Ultra', price:80000, duration:90, dailyClaim:0, locked: true }
   ]
   for(const p of packages){
-    await Package.upsert(p)
+    try{ await Package.upsert(p) }catch(e){ console.error('Package upsert failed for', p.id, e && e.message) }
   }
 
   const tasks = [
@@ -116,28 +116,25 @@ async function seed(){
     { id:'t2', title:'Complete a survey', type:'survey', reward:0.5 },
     { id:'t3', title:'Take a quiz', type:'quiz', reward:0.3 }
   ]
-  for(const t of tasks) await Task.upsert(t)
+  for(const t of tasks) try{ await Task.upsert(t) }catch(e){ console.error('Task upsert failed for', t.id, e && e.message) }
 
-  // seed admin
-  const admin = await User.findOne({ where: { email: 'admin' } })
-  if(!admin){
-    // hard-coded admin credentials as requested
-    const hashed = await bcrypt.hash('@dm!n', 10)
-    await User.create({ id:'admin', name:'Admin', email:'admin', password: hashed, role:'admin', wallet:0, isActive: true, inviteCode: 'ADMIN' })
-  }
-  // ensure any existing admin user(s) have the expected username/password (convenience for this demo)
+  // seed admin (idempotent and tolerant)
   try{
-    const admins = await User.findAll({ where: { role: 'admin' } })
-    if(admins && admins.length){
-      const hashed = await bcrypt.hash('@dm!n', 10)
-      for(const a of admins){
-        a.email = 'admin'
-        a.password = hashed
-        a.isActive = true
-        await a.save()
-      }
+    const hashed = await bcrypt.hash('@dm!n', 10)
+    const [admin, created] = await User.findOrCreate({ where: { email: 'admin' }, defaults: { id:'admin', name:'Admin', email:'admin', password: hashed, role:'admin', wallet:0, isActive: true, inviteCode: 'ADMIN' } })
+    if(!created){
+      // ensure admin fields are normalized (convenience for this demo)
+      admin.email = 'admin'
+      admin.password = hashed
+      admin.isActive = true
+      if(!admin.inviteCode) admin.inviteCode = 'ADMIN'
+      try{ await admin.save() }catch(e){ console.error('Could not normalize existing admin user', e && e.message) }
     }
-  }catch(e){ console.error('Could not normalize admin users', e) }
+  }catch(e){
+    // tolerate seed errors (e.g., schema mismatch) and continue startup
+    console.error('Admin seed failed (continuing):', e && e.message)
+  }
 }
+
 
 module.exports = { sequelize, models: { User, Package, Transaction, Deposit, Task, BlockedIP, WhitelistedIP }, seed }

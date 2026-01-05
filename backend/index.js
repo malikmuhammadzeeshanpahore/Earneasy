@@ -108,7 +108,12 @@ async function start(){
     }
   }
 
-  await seed()
+  try{
+    await seed()
+  }catch(e){
+    console.error('Seed failed, continuing startup (seed error):', e && e.message || e)
+  }
+
   // ensure new columns exist on older DB files (e.g. packageId added later)
   try{
     const qi = sequelize.getQueryInterface()
