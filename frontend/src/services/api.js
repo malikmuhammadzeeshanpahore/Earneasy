@@ -1,24 +1,19 @@
-// Environment-aware API base selection
+// Environment-aware API base selection (uses VITE_API_BASE when provided)
 // Goals:
-// - development: use http://localhost:4000/api
-// - production: use relative path /api (so nginx or same-origin proxy works)
-// - allow optional runtime override via window.__API_BASE__ for special cases
+// - development: default to http://localhost:4000/api unless VITE_API_BASE overrides
+// - production: default to /api unless VITE_API_BASE overrides
+// - allow runtime override via window.__API_BASE__ for special cases
 const runtimeBase = (typeof window !== 'undefined' && window.__API_BASE__) ? window.__API_BASE__ : null
+const envBase = import.meta.env.VITE_API_BASE || null
 const isDev = import.meta.env.MODE === 'development'
 
-let configured = null
-if (runtimeBase) {
-  configured = runtimeBase
-} else if (isDev) {
-  configured = 'http://localhost:4000'
-} else {
-  // production: use relative API root so requests go to same origin -> /api
-  configured = '' // empty signals use of relative path
+let configured = runtimeBase || envBase
+if(!configured){
+  configured = isDev ? 'http://localhost:4000/api' : '/api'
 }
-
-const BASE = (configured && configured.endsWith('/api'))
-  ? configured
-  : (configured ? configured + '/api' : '/api')
+// ensure no trailing slash
+configured = configured.replace(/\/$/, '')
+const BASE = configured
 
 if (isDev) console.info('[api] running in development mode, API base =', BASE)
 

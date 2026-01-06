@@ -9,9 +9,9 @@ RUN npm ci --silent
 # Copy source
 COPY frontend/ .
 
-# Allow build-time API URL (Vite expects VITE_ prefixed vars)
-ARG VITE_API_URL
-ENV VITE_API_URL=${VITE_API_URL:-http://localhost:4000}
+# Allow build-time API base (Vite expects VITE_ prefixed vars)
+ARG VITE_API_BASE
+ENV VITE_API_BASE=${VITE_API_BASE:-/api}
 
 RUN npm run build
 
