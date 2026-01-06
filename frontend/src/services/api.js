@@ -217,5 +217,6 @@ export default {
   adminGetWithdraws, adminMarkWithdrawSent, adminConfirmWithdraw,
   adminApproveWithdraw, adminRejectWithdraw,
   // secrets & auth
+  assetUrl,
   setAdminSecret, setToken
 }
