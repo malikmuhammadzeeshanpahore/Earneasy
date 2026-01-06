@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from 'react'
 import api from '../services/api'
+import copyToClipboard from '../utils/clipboard'
 
 export default function Deposit(){
   const [accountHolder,setAccountHolder] = useState('')
@@ -49,6 +50,7 @@ export default function Deposit(){
 
   return (
     <div>
+      <h1 className="text-2xl font-bold text-brand mb-3">JazzCash</h1>
       <h2>Submit Deposit</h2>
       <div className="card" style={{maxWidth:700, marginBottom:12}}>
         <h4 className="font-semibold">Top-up Instructions:</h4>
@@ -87,7 +89,7 @@ export default function Deposit(){
           </div>
           <div style={{textAlign:'right'}}>
             <div className="text-lg font-bold">03344379353</div>
-            <button type="button" className="btn ghost" onClick={()=>{ navigator.clipboard && navigator.clipboard.writeText('03344379353'); alert('Number copied') }} style={{marginTop:8}}>Copy</button>
+            <button type="button" className="btn ghost" onClick={async ()=>{ try{ await copyToClipboard('03344379353'); alert('Number copied') }catch(e){ console.error('Copy failed', e); alert('Could not copy number') } }} style={{marginTop:8}}>Copy</button>
           </div>
         </div>
 
