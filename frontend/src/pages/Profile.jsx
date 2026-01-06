@@ -87,7 +87,7 @@ export default function Profile(){
       <div style={{marginTop:16,display:'flex',gap:8,flexWrap:'wrap'}}>
         <button className="btn ghost" onClick={async ()=>{ const code = user.inviteCode || user.id; if(!code){ toast.show('Invite code not ready','info'); return } try{ await copyToClipboard(code); toast.show('Invite code copied: ' + code, 'success') }catch(e){ console.error('Copy failed', e); toast.show('Could not copy invite code', 'error') } }}><i className="ri-link-m"></i> Copy Invite Code</button>
         <button className="btn ghost" onClick={async ()=>{ const code = user.inviteCode || user.id; if(!code){ toast.show('Invite code not ready','info'); return } const link = window.location.origin + '/auth?ref=' + code; try{ await copyToClipboard(link); toast.show('Invite link copied: ' + link, 'success') }catch(e){ console.error('Copy failed', e); toast.show('Could not copy invite link', 'error') } }}><i className="ri-share-line"></i> Copy Invite Link</button>
-        <button className="btn ghost" onClick={async ()=>{ /* placeholder for download */ const dl = 'https://example.com/app-download'; try{ await copyToClipboard(dl); toast.show('App download link copied', 'success') }catch(e){ console.error('Copy failed', e); toast.show('Could not copy download link', 'error') } }}><i className="ri-download-line"></i> App Download</button>
+        <a className="btn ghost" href="http://earneasy.fun/app/earneasy.apk" download><i className="ri-download-line"></i> App Download</a>
         <button className="btn ghost" onClick={()=>{ localStorage.removeItem('de_user'); localStorage.removeItem('de_token'); window.location.href='/' }}><i className="ri-logout-box-line"></i> Logout</button>
       </div>
 
