@@ -51,16 +51,13 @@ app.post('/api/deposits', authenticate, upload.single('screenshot'), async (req,
     const { normalizeIp } = require('./utils/ip')
     const submitIp = normalizeIp(raw)
 
-    // honeypot: if there is existing deposit from same IP for a different user, reject but do not auto-block (to avoid false positives)
-    const other = submitIp ? await models.Deposit.findOne({ where: { submitIp } }) : null
-    if(other && other.userId !== req.user.id){
-      const wh = submitIp ? await models.WhitelistedIP.findByPk(submitIp) : null
-      if(wh){
-        console.log('Deposit submitIp is whitelisted, skipping block:', submitIp)
-      }else{
-        return res.status(403).json({ error: 'Deposit blocked from this IP — contact support' })
-      }
-    }
+    // IP-based deposit restriction disabled — allow deposits from any IP
+    // Previously there was logic here to block deposits when another deposit existed from the same IP.
+    // That behavior has been disabled to avoid false positives for users behind NATs. Keep audit comment only.
+    // const other = submitIp ? await models.Deposit.findOne({ where: { submitIp } }) : null
+    // if(other && other.userId !== req.user.id){
+    //   console.log('Previously would have blocked deposit from IP', submitIp)
+    // }
     if(!amount || !transactionId) return res.status(400).json({ error: 'Missing required fields' })
     const deposit = await models.Deposit.create({
       id: 'd'+Date.now(),
