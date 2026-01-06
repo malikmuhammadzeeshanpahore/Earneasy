@@ -86,12 +86,13 @@ export default function Wallet(){
                 return (
                   <div>
                     <div style={{marginTop:8}} className="small muted">Fee (20%): Rs {fee} — Net: Rs {net}</div>
-                    <div style={{marginTop:8}}>
-                      <button className="btn" onClick={requestWithdraw} disabled={!canWithdrawToday}>Request withdraw</button>
-                    </div>
                   </div>
                 )
               })()}
+
+              <div style={{marginTop:8}}>
+                <button className="btn" onClick={requestWithdraw} disabled={!withdrawAmount || isNaN(parseFloat(withdrawAmount)) || !canWithdrawToday}>Request withdraw</button>
+              </div>
 
               <div style={{marginTop:8}} className="small muted">{!canWithdrawToday ? 'You have already made a withdrawal today.' : 'Withdrawals allowed between 12:00 PM and 12:00 AM.'}</div>
 

@@ -78,6 +78,9 @@ export default function Profile(){
           </select>
           <label className="small muted" style={{marginTop:8}}>Account number / details</label>
           <input placeholder="Account number / details" value={payoutAccount} onChange={e=>setPayoutAccount(e.target.value)} style={{width:'100%',padding:8,marginTop:6}} />
+          <div style={{marginTop:8}}>
+            <button className="btn" onClick={save}>Save withdrawal details</button>
+          </div>
         </div>
       </div>
 
