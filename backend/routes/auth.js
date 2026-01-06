@@ -20,18 +20,8 @@ router.post('/signup', async (req,res)=>{
     if(!email || !password) return res.status(400).json({ error:'email & password required' })
     const exists = await models.User.findOne({ where: { email } })
     if(exists) return res.status(400).json({ error:'User exists' })
-    // honeypot: if another user was created from same IP, reject signup but avoid auto-blocking to prevent false positives (NATs)
-    const other = signupIp ? await models.User.findOne({ where: { signupIp } }) : null
-    if(other){
-      // if IP is whitelisted, allow
-      const wh = signupIp ? await models.WhitelistedIP.findByPk(signupIp) : null
-      if(wh){
-        console.log('Signup attempt from whitelisted IP, allowing:', signupIp)
-      }else{
-        // Do NOT automatically block the IP (could be NAT/shared). Return a clear error so admin can review.
-        return res.status(429).json({ error: 'Too many signups from this IP — contact support' })
-      }
-    }
+    // IP-based signup restrictions disabled — allow signups from any IP
+
     const hashed = await bcrypt.hash(password, 10)
     const id = 'u'+Date.now()
     // generate an invite code for this user
