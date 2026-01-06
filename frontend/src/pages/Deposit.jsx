@@ -50,8 +50,8 @@ export default function Deposit(){
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-brand mb-3">JazzCash</h1>
-      <h2>Submit Deposit</h2>
+      <h1 className="text-4xl font-extrabold text-brand mb-4 text-center">JazzCash</h1>
+      <h2 className="text-center">Submit Deposit</h2>
       <div className="card" style={{maxWidth:700, marginBottom:12}}>
         <h4 className="font-semibold">Top-up Instructions:</h4>
         <ol className="small muted" style={{marginTop:8}}>

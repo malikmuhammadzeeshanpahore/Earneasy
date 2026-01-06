@@ -105,7 +105,8 @@ async function seed(){
     { id:'p12000', name:'Diamond', price:12000, duration:90, dailyClaim:2200 },
     { id:'p20000', name:'Elite', price:20000, duration:90, dailyClaim:0, locked: true },
     { id:'p40000', name:'Pro', price:40000, duration:90, dailyClaim:0, locked: true },
-    { id:'p80000', name:'Ultra', price:80000, duration:90, dailyClaim:0, locked: true }
+    { id:'p80000', name:'Ultra', price:80000, duration:90, dailyClaim:0, locked: true },
+    { id:'p100000', name:'Mega', price:100000, duration:90, dailyClaim:0, locked: true }
   ]
   for(const p of packages){
     try{ await Package.upsert(p) }catch(e){ console.error('Package upsert failed for', p.id, e && e.message) }
