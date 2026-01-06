@@ -43,12 +43,16 @@ router.get('/whitelist', allowAdminOrSecret(async (req,res)=>{
 router.post('/whitelist', allowAdminOrSecret(async (req,res)=>{
   const { ip, note } = req.body || {}
   if(!ip) return res.status(400).json({ error: 'Missing ip' })
-  await models.WhitelistedIP.upsert({ ip, note })
+  const { normalizeIp } = require('../utils/ip')
+  const n = normalizeIp(ip)
+  await models.WhitelistedIP.upsert({ ip: n, note })
   res.json({ ok:true })
 }))
 
 router.post('/whitelist/:ip/remove', allowAdminOrSecret(async (req,res)=>{
-  const ip = req.params.ip
+  const raw = req.params.ip
+  const { normalizeIp } = require('../utils/ip')
+  const ip = normalizeIp(raw)
   const w = await models.WhitelistedIP.findByPk(ip)
   if(!w) return res.status(404).json({ error: 'Not found' })
   await w.destroy()
@@ -56,7 +60,9 @@ router.post('/whitelist/:ip/remove', allowAdminOrSecret(async (req,res)=>{
 }))
 
 router.post('/blocked/:ip/unblock', allowAdminOrSecret(async (req,res)=>{
-  const ip = req.params.ip
+  const raw = req.params.ip
+  const { normalizeIp } = require('../utils/ip')
+  const ip = normalizeIp(raw)
   const b = await models.BlockedIP.findByPk(ip)
   if(!b) return res.status(404).json({ error:'Not found' })
   await b.destroy()

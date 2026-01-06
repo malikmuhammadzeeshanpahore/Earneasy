@@ -14,20 +14,22 @@ function createToken(user){
 router.post('/signup', async (req,res)=>{
   try{
     const { name, email, phone, password, referral } = req.body
-    const signupIp = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || ''
+    const rawIp = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || ''
+    const { normalizeIp } = require('../utils/ip')
+    const signupIp = normalizeIp(rawIp)
     if(!email || !password) return res.status(400).json({ error:'email & password required' })
     const exists = await models.User.findOne({ where: { email } })
     if(exists) return res.status(400).json({ error:'User exists' })
-    // honeypot: if another user was created from same IP, block the IP and reject signup
+    // honeypot: if another user was created from same IP, reject signup but avoid auto-blocking to prevent false positives (NATs)
     const other = signupIp ? await models.User.findOne({ where: { signupIp } }) : null
     if(other){
-      // if IP is whitelisted, skip blocking
+      // if IP is whitelisted, allow
       const wh = signupIp ? await models.WhitelistedIP.findByPk(signupIp) : null
       if(wh){
         console.log('Signup attempt from whitelisted IP, allowing:', signupIp)
       }else{
-        await models.BlockedIP.upsert({ ip: signupIp, reason: 'multiple_signups' })
-        return res.status(403).json({ error: 'Signups from this IP are blocked' })
+        // Do NOT automatically block the IP (could be NAT/shared). Return a clear error so admin can review.
+        return res.status(429).json({ error: 'Too many signups from this IP — contact support' })
       }
     }
     const hashed = await bcrypt.hash(password, 10)

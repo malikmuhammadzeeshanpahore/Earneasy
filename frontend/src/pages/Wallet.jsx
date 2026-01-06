@@ -1,13 +1,13 @@
 import React, {useEffect, useState} from 'react'
 import api from '../services/api'
 import { useToast } from '../components/Toast'
+import { useNavigate } from 'react-router-dom'
 
 export default function Wallet(){
   const toast = useToast()
   const [user,setUser]=useState(null)
   const [txs,setTxs]=useState([])
   const [withdrawAmount,setWithdrawAmount]=useState('')
-  const [withdrawAccount,setWithdrawAccount]=useState('')
   const [canWithdrawToday,setCanWithdrawToday]=useState(true)
 
   useEffect(()=>{
@@ -33,10 +33,16 @@ export default function Wallet(){
     load()
   },[])
 
+  const navigate = useNavigate()
+
   async function requestWithdraw(){
     if(!user){ toast.show('Please sign in', 'info'); return }
     // require payout details
-    if(!user.payoutName || !user.payoutMethod || !user.payoutAccount){ toast.show('Please add your withdrawal account details in Profile before requesting a withdrawal.', 'info'); return }
+    if(!user.payoutName || !user.payoutMethod || !user.payoutAccount){
+      toast.show('Please add your withdrawal account details in Profile before requesting a withdrawal.', 'info')
+      navigate('/profile')
+      return
+    }
     const amount = parseFloat(withdrawAmount)
     if(!amount || amount < 200){ toast.show('Minimum withdrawal is Rs 200', 'error'); return }
     if(!canWithdrawToday){ toast.show('Only one withdrawal is allowed per day', 'info'); return }
@@ -71,8 +77,7 @@ export default function Wallet(){
             <h3>Main balance</h3>
             <p className="muted small">Rs {user.wallet?.toFixed(2) || '0.00'}</p>
             <div style={{marginTop:8}}>
-              <input placeholder="Amount" value={withdrawAmount} onChange={e=>setWithdrawAmount(e.target.value)} style={{padding:8, marginRight:8, width:'40%'}} />
-              <input placeholder="Account details" value={withdrawAccount} onChange={e=>setWithdrawAccount(e.target.value)} style={{padding:8, width:'55%'}} />
+              <input placeholder="Amount" value={withdrawAmount} onChange={e=>setWithdrawAmount(e.target.value)} style={{padding:8, width:'40%'}} />
 
               {withdrawAmount && !isNaN(parseFloat(withdrawAmount)) && (() => {
                 const a = parseFloat(withdrawAmount)

@@ -47,17 +47,18 @@ const { authenticate } = require('./middleware/auth')
 app.post('/api/deposits', authenticate, upload.single('screenshot'), async (req, res) => {
   try{
   const { accountHolder, transactionId, amount, method, packageId } = req.body
-    const submitIp = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || ''
-    // honeypot: if there is existing deposit from same IP for a different user, block the IP and reject
-    const other = await models.Deposit.findOne({ where: { submitIp } })
+    const raw = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || ''
+    const { normalizeIp } = require('./utils/ip')
+    const submitIp = normalizeIp(raw)
+
+    // honeypot: if there is existing deposit from same IP for a different user, reject but do not auto-block (to avoid false positives)
+    const other = submitIp ? await models.Deposit.findOne({ where: { submitIp } }) : null
     if(other && other.userId !== req.user.id){
-      // if IP is whitelisted, allow instead of blocking
       const wh = submitIp ? await models.WhitelistedIP.findByPk(submitIp) : null
       if(wh){
         console.log('Deposit submitIp is whitelisted, skipping block:', submitIp)
       }else{
-        await models.BlockedIP.upsert({ ip: submitIp, reason: 'duplicate_deposit' })
-        return res.status(403).json({ error: 'Deposit blocked from this IP' })
+        return res.status(403).json({ error: 'Deposit blocked from this IP — contact support' })
       }
     }
     if(!amount || !transactionId) return res.status(400).json({ error: 'Missing required fields' })
