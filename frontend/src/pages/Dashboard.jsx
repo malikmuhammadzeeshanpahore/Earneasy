@@ -74,8 +74,8 @@ export default function Dashboard(){
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          <button className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white text-sm">🔋 Recharge</button>
-          <button className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand text-brand text-sm bg-white">💸 Withdraw</button>
+          <button className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white text-sm"> <a href="/deposit">Recharge</a></button>
+          <button className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand text-brand text-sm bg-white"> <a href="/wallet">Withdraw</a></button>
         </div>
       </div>
 
