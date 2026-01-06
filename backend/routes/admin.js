@@ -24,7 +24,8 @@ function allowAdminOrSecret(handler){
 }
 
 router.get('/deposits', allowAdminOrSecret(async (req,res)=>{
-  const deposits = await models.Deposit.findAll({ where: { status: 'pending' }, order:[['createdAt','DESC']] })
+  // include user basic info so admin can see who submitted each deposit
+  const deposits = await models.Deposit.findAll({ where: { status: 'pending' }, order:[['createdAt','DESC']], include: [{ model: models.User, attributes: ['id','name','email'] }] })
   res.json({ deposits })
 }))
 

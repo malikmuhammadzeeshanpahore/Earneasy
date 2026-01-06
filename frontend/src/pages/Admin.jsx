@@ -93,11 +93,15 @@ export default function Admin(){
           <h3>Pending Deposits</h3>
           {deposits.length===0 ? <div className="small muted">No pending deposits</div> : (
             <div style={{display:'flex',flexDirection:'column',gap:12}}>
-              {deposits.map(d=> (
+              {deposits.map(d=> {
+                const user = d.User || users.find(u=>u.id===d.userId) || {}
+                const time = d.createdAt ? new Date(d.createdAt).toLocaleString() : '—'
+                return (
                 <div key={d.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <div>
-                    <div><strong>${d.amount}</strong> — {d.method}</div>
-                    <div className="small muted">Txn: {d.transactionId} • By: {d.userId}</div>
+                    <div><strong>Rs {d.amount}</strong> — {d.method}</div>
+                    <div className="small muted">Txn: {d.transactionId} • By: {user.email || d.userId} {user.name ? `(${user.name})` : ''}</div>
+                    <div className="small muted">Account holder: {d.accountHolder || '—' } • Time: {time}</div>
                     {d.screenshot && <div style={{marginTop:8}}>
                       <a href={api.assetUrl(d.screenshot)} target="_blank" rel="noreferrer" style={{display:'inline-flex',alignItems:'center',gap:8}}>
                         <img src={api.assetUrl(d.screenshot)} alt="s" style={{maxWidth:140,borderRadius:8}}/>
@@ -110,7 +114,7 @@ export default function Admin(){
                     <button className="btn ghost" onClick={()=>reject(d.id)}>Reject</button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>

@@ -87,6 +87,7 @@ const Task = sequelize.define('Task', {
 // relations
 User.hasMany(Transaction, { foreignKey: 'userId' })
 User.hasMany(Deposit, { foreignKey: 'userId' })
+Deposit.belongsTo(User, { foreignKey: 'userId' })
 
 // Exported models will include BlockedIP
 
