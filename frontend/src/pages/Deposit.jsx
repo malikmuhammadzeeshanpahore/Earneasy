@@ -47,7 +47,7 @@ export default function Deposit(){
       const r2 = await api.getMyDeposits(); if(r2.deposits) setDeposits(r2.deposits)
     }catch(e){ console.error('Submit deposit failed', e); alert('Server error') }
   }
-
+// Comment
   return (
     <div>
       <h1 className="text-4xl font-extrabold text-brand mb-4 text-center">JazzCash</h1>
