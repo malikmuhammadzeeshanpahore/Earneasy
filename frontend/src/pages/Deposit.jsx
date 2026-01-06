@@ -1,8 +1,10 @@
 import React, {useState, useEffect} from 'react'
 import api from '../services/api'
 import copyToClipboard from '../utils/clipboard'
+import { useToast } from '../components/Toast'
 
 export default function Deposit(){
+  const toast = useToast()
   const [accountHolder,setAccountHolder] = useState('')
   const [transactionId,setTransactionId] = useState('')
   const [amount,setAmount] = useState('')
@@ -40,12 +42,12 @@ export default function Deposit(){
     e.preventDefault()
     try{
       // Client-side validation: minimum top-up amount Rs700
-      if(!amount || Number(amount) < 700) return alert('Minimum top-up amount is Rs700')
+      if(!amount || Number(amount) < 700){ toast.show('Minimum top-up amount is Rs700', 'error'); return }
       const r = await api.submitDeposit({ accountHolder, transactionId, amount, method, packageId: selectedPackage, screenshotFile: file })
-      if(r.error) return alert(r.error)
-      alert('Deposit submitted — pending admin approval')
+      if(r.error){ toast.show(r.error, 'error'); return }
+      toast.show('Deposit submitted — pending admin approval', 'success')
       const r2 = await api.getMyDeposits(); if(r2.deposits) setDeposits(r2.deposits)
-    }catch(e){ console.error('Submit deposit failed', e); alert('Server error') }
+    }catch(e){ console.error('Submit deposit failed', e); toast.show('Server error', 'error') }
   }
 // Comment
   return (
@@ -89,7 +91,7 @@ export default function Deposit(){
           </div>
           <div style={{textAlign:'right'}}>
             <div className="text-lg font-bold">03344379353</div>
-            <button type="button" className="btn ghost" onClick={async ()=>{ try{ await copyToClipboard('03344379353'); alert('Number copied') }catch(e){ console.error('Copy failed', e); alert('Could not copy number') } }} style={{marginTop:8}}>Copy</button>
+            <button type="button" className="btn ghost" onClick={async ()=>{ try{ await copyToClipboard('03344379353'); toast.show('Number copied', 'success') }catch(e){ console.error('Copy failed', e); toast.show('Could not copy number', 'error') } }} style={{marginTop:8}}>Copy</button>
           </div>
         </div>
 

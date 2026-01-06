@@ -2,9 +2,11 @@ import React, {useEffect, useState} from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
 import copyToClipboard from '../utils/clipboard'
+import { useToast } from '../components/Toast'
 // Progress component removed from dashboard in new design
 
 export default function Dashboard(){
+  const toast = useToast()
   const [user,setUser] = useState(null)
 
   useEffect(()=>{
@@ -49,13 +51,13 @@ export default function Dashboard(){
       api.setToken(localStorage.getItem('de_token'))
       const r = await api.claimDaily()
       if(r.ok){
-        alert('Claimed Rs ' + r.amount)
+        toast.show('Claimed Rs ' + r.amount, 'success')
         setUser({ ...user, wallet: r.wallet })
         localStorage.setItem('de_user', JSON.stringify({ ...JSON.parse(localStorage.getItem('de_user')||'{}'), wallet: r.wallet }))
       }else if(r.error){
-        alert(r.error)
+        toast.show(r.error, 'error')
       }
-    }catch(e){ console.error('Claim failed', e); alert('Claim failed') }
+    }catch(e){ console.error('Claim failed', e); toast.show('Claim failed', 'error') }
   }
 
   const inviteCode = user.inviteCode || user.id
@@ -110,24 +112,24 @@ export default function Dashboard(){
           <p className="text-sm text-slate-500">Invite code: <strong>{inviteCode}</strong></p>
           <div className="flex gap-2 mt-2">
             <button className="inline-block px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white" onClick={async ()=>{
-              if(!inviteCode) return alert('Invite code not ready')
+              if(!inviteCode){ toast.show('Invite code not ready','info'); return }
               try{
                 await copyToClipboard(inviteCode)
-                alert('Copied code: ' + inviteCode)
+                toast.show('Copied code: ' + inviteCode, 'success')
               }catch(e){
                 console.error('Copy failed', e)
-                alert('Could not copy invite code')
+                toast.show('Could not copy invite code', 'error')
               }
             }}>Copy Code</button>
             <button className="inline-block px-3 py-2 rounded-lg border border-slate-200 text-slate-800" onClick={async ()=>{
-              if(!inviteCode) return alert('Invite code not ready')
+              if(!inviteCode){ toast.show('Invite code not ready','info'); return }
               const link = window.location.origin + '/auth?ref=' + inviteCode
               try{
                 await copyToClipboard(link)
-                alert('Copied link: ' + link)
+                toast.show('Copied link: ' + link, 'success')
               }catch(e){
                 console.error('Copy failed', e)
-                alert('Could not copy invite link')
+                toast.show('Could not copy invite link', 'error')
               }
             }}>Copy Link</button>
           </div>

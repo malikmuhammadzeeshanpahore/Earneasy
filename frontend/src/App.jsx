@@ -16,29 +16,33 @@ import Footer from './components/Footer'
 import JoinChannelModal from './components/JoinChannelModal'
 import ErrorBoundary from './components/ErrorBoundary'
 
+import { ToastProvider } from './components/Toast'
+
 export default function App(){
   return (
-    <div>
-      <Header />
-      <JoinChannelModal />
-      <main className="container">
-        <ErrorBoundary>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/packages" element={<Packages />} />
-          <Route path="/wallet" element={<Wallet />} />
-          <Route path="/deposit" element={<Deposit />} />
-          <Route path="/referrals" element={<Referrals />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/secret-admin/:code" element={<SecretAdmin />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        </ErrorBoundary>
-      </main>
-      <Footer />
-    </div>
+    <ToastProvider>
+      <div>
+        <Header />
+        <JoinChannelModal />
+        <main className="container">
+          <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/packages" element={<Packages />} />
+            <Route path="/wallet" element={<Wallet />} />
+            <Route path="/deposit" element={<Deposit />} />
+            <Route path="/referrals" element={<Referrals />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/secret-admin/:code" element={<SecretAdmin />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          </ErrorBoundary>
+        </main>
+        <Footer />
+      </div>
+    </ToastProvider>
   )
 }

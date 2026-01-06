@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import api from '../services/api'
+import { useToast } from '../components/Toast'
 
 const SAMPLE_TASKS = [
   {id:'t1', title:'Watch a video ad', reward:0.2, type:'video'},
@@ -8,6 +9,7 @@ const SAMPLE_TASKS = [
 ]
 
 export default function Tasks(){
+  const toast = useToast()
   const [user,setUser]=useState(null)
   const [tasks,setTasks]=useState(SAMPLE_TASKS)
 
@@ -25,15 +27,15 @@ export default function Tasks(){
     load()
   },[])
   async function doTask(task){
-    if(!user) return alert('Please sign in')
+    if(!user){ toast.show('Please sign in', 'info'); return }
     try{
       api.setToken(localStorage.getItem('de_token'))
       const r = await api.completeTask(task.id)
-      if(r.error) return alert(r.error)
-      alert(`Task completed — +$${task.reward}`)
+      if(r.error){ toast.show(r.error, 'error'); return }
+      toast.show(`Task completed — +$${task.reward}`, 'success')
       const me = await api.me()
       if(me.user) { localStorage.setItem('de_user', JSON.stringify(me.user)); setUser(me.user) }
-    }catch(e){alert('Server error')}
+    }catch(e){ toast.show('Server error', 'error') }
   }
 
   return (

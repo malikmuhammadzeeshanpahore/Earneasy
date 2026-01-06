@@ -19,9 +19,16 @@ export default async function copyToClipboard(text){
       const textarea = document.createElement('textarea')
       textarea.value = text
       textarea.setAttribute('readonly', '')
-      textarea.style.position = 'absolute'
+      // place off-screen but focusable
+      textarea.style.position = 'fixed'
+      textarea.style.top = '0'
       textarea.style.left = '-9999px'
+      textarea.style.width = '1px'
+      textarea.style.height = '1px'
+      textarea.style.opacity = '0'
+      textarea.style.outline = 'none'
       document.body.appendChild(textarea)
+      textarea.focus()
       textarea.select()
       textarea.setSelectionRange(0, textarea.value.length)
 

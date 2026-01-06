@@ -1,7 +1,9 @@
 import React, {useEffect, useState} from 'react'
 import api from '../services/api'
+import { useToast } from '../components/Toast'
 
 export default function Wallet(){
+  const toast = useToast()
   const [user,setUser]=useState(null)
   const [txs,setTxs]=useState([])
   const [withdrawAmount,setWithdrawAmount]=useState('')
@@ -32,20 +34,20 @@ export default function Wallet(){
   },[])
 
   async function requestWithdraw(){
-    if(!user) return alert('Please sign in')
+    if(!user){ toast.show('Please sign in', 'info'); return }
     // require payout details
-    if(!user.payoutName || !user.payoutMethod || !user.payoutAccount) return alert('Please add your withdrawal account details in Profile before requesting a withdrawal.')
+    if(!user.payoutName || !user.payoutMethod || !user.payoutAccount){ toast.show('Please add your withdrawal account details in Profile before requesting a withdrawal.', 'info'); return }
     const amount = parseFloat(withdrawAmount)
-    if(!amount || amount < 200) return alert('Minimum withdrawal is Rs 200')
-    if(!canWithdrawToday) return alert('Only one withdrawal is allowed per day')
+    if(!amount || amount < 200){ toast.show('Minimum withdrawal is Rs 200', 'error'); return }
+    if(!canWithdrawToday){ toast.show('Only one withdrawal is allowed per day', 'info'); return }
     // check local time window (client-side hint) - server will enforce as well
     const now = new Date(); const hour = now.getHours();
-    if(!(hour >= 12 && hour < 24)) return alert('Withdrawals are allowed between 12:00 PM and 12:00 AM only')
+    if(!(hour >= 12 && hour < 24)){ toast.show('Withdrawals are allowed between 12:00 PM and 12:00 AM only', 'info'); return }
     try{
       api.setToken(localStorage.getItem('de_token'))
       const r = await api.withdraw({ amount })
-      if(r.error) return alert(r.error)
-      alert('Withdrawal requested — pending. Fee: Rs ' + (r.fee||0) + ', Net: Rs ' + (r.net||0))
+      if(r.error){ toast.show(r.error, 'error'); return }
+      toast.show('Withdrawal requested — pending. Fee: Rs ' + (r.fee||0) + ', Net: Rs ' + (r.net||0), 'success')
       const meRes = await api.me()
       if(meRes.user) setUser(meRes.user)
       const txRes = await api.getTransactions()
@@ -54,7 +56,7 @@ export default function Wallet(){
       setCanWithdrawToday(false)
     }catch(e){
       console.error('Withdraw request failed', e)
-      alert('Server error')
+      toast.show('Server error', 'error')
     }
   }
 

@@ -1,8 +1,10 @@
 import React, {useEffect, useState} from 'react'
 import api from '../services/api'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '../components/Toast'
 
 export default function Packages(){
+  const toast = useToast()
   const [packages,setPackages]=useState([])
   const [user,setUser]=useState(null)
 
@@ -22,7 +24,7 @@ export default function Packages(){
 
   const navigate = useNavigate()
   function handleBuy(pkgId){
-    if(!user){ return alert('Please sign in') }
+    if(!user){ toast.show('Please sign in', 'info'); return }
     // attempt to buy via API — if insufficient funds, backend will tell us how much is required
     (async ()=>{
       try{
@@ -37,7 +39,7 @@ export default function Packages(){
           const updated = { ...user, wallet: newWallet }
           setUser(updated)
           localStorage.setItem('de_user', JSON.stringify({ ...JSON.parse(localStorage.getItem('de_user')||'{}'), wallet: newWallet }))
-          alert('Package purchased and activated!')
+          toast.show('Package purchased and activated!', 'success')
           return
         }
         // fallback: redirect to deposit

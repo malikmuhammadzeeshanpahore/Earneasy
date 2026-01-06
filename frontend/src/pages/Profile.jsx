@@ -1,8 +1,10 @@
 import React, {useEffect, useState} from 'react'
 import api from '../services/api'
+import { useToast } from '../components/Toast'
 import copyToClipboard from '../utils/clipboard'
 
 export default function Profile(){
+  const toast = useToast()
   const [user,setUser]=useState(null)
   const [name,setName]=useState('')
   const [payoutName,setPayoutName]=useState('')
@@ -29,22 +31,22 @@ export default function Profile(){
     try{
       const payload = { name, payoutName, payoutMethod, payoutAccount }
       const data = await api.updateMe(payload)
-      if(data.user){ setUser(data.user); localStorage.setItem('de_user', JSON.stringify(data.user)); alert('Profile updated') }
+      if(data.user){ setUser(data.user); localStorage.setItem('de_user', JSON.stringify(data.user)); toast.show('Profile updated', 'success') }
     }catch(e){
       console.error('Profile save failed', e)
-      alert('Server error')
+      toast.show('Server error', 'error')
     }
   }
 
   const [oldPassword,setOldPassword] = useState('')
   const [newPassword,setNewPassword] = useState('')
   async function changePassword(){
-    if(!oldPassword || !newPassword) return alert('Enter both current and new password')
+    if(!oldPassword || !newPassword){ toast.show('Enter both current and new password', 'info'); return }
     try{
       const r = await api.changePassword({ oldPassword, newPassword })
-      if(r && r.ok){ alert('Password changed') ; setOldPassword(''); setNewPassword('') }
-      else if(r && r.error) alert(r.error)
-    }catch(e){ console.error('Change password failed', e); alert('Server error') }
+      if(r && r.ok){ toast.show('Password changed', 'success'); setOldPassword(''); setNewPassword('') }
+      else if(r && r.error) toast.show(r.error, 'error')
+    }catch(e){ console.error('Change password failed', e); toast.show('Server error', 'error') }
   }
 
   if(!user) return <div className="card">Please sign in to edit profile.</div>
@@ -80,9 +82,9 @@ export default function Profile(){
       </div>
 
       <div style={{marginTop:16,display:'flex',gap:8,flexWrap:'wrap'}}>
-        <button className="btn ghost" onClick={async ()=>{ const code = user.inviteCode || user.id; if(!code) return alert('Invite code not ready'); try{ await copyToClipboard(code); alert('Invite code copied: ' + code) }catch(e){ console.error('Copy failed', e); alert('Could not copy invite code') } }}><i className="ri-link-m"></i> Copy Invite Code</button>
-        <button className="btn ghost" onClick={async ()=>{ const code = user.inviteCode || user.id; if(!code) return alert('Invite code not ready'); const link = window.location.origin + '/auth?ref=' + code; try{ await copyToClipboard(link); alert('Invite link copied: ' + link) }catch(e){ console.error('Copy failed', e); alert('Could not copy invite link') } }}><i className="ri-share-line"></i> Copy Invite Link</button>
-        <button className="btn ghost" onClick={async ()=>{ /* placeholder for download */ const dl = 'https://example.com/app-download'; try{ await copyToClipboard(dl); alert('App download link copied') }catch(e){ console.error('Copy failed', e); alert('Could not copy download link') } }}><i className="ri-download-line"></i> App Download</button>
+        <button className="btn ghost" onClick={async ()=>{ const code = user.inviteCode || user.id; if(!code){ toast.show('Invite code not ready','info'); return } try{ await copyToClipboard(code); toast.show('Invite code copied: ' + code, 'success') }catch(e){ console.error('Copy failed', e); toast.show('Could not copy invite code', 'error') } }}><i className="ri-link-m"></i> Copy Invite Code</button>
+        <button className="btn ghost" onClick={async ()=>{ const code = user.inviteCode || user.id; if(!code){ toast.show('Invite code not ready','info'); return } const link = window.location.origin + '/auth?ref=' + code; try{ await copyToClipboard(link); toast.show('Invite link copied: ' + link, 'success') }catch(e){ console.error('Copy failed', e); toast.show('Could not copy invite link', 'error') } }}><i className="ri-share-line"></i> Copy Invite Link</button>
+        <button className="btn ghost" onClick={async ()=>{ /* placeholder for download */ const dl = 'https://example.com/app-download'; try{ await copyToClipboard(dl); toast.show('App download link copied', 'success') }catch(e){ console.error('Copy failed', e); toast.show('Could not copy download link', 'error') } }}><i className="ri-download-line"></i> App Download</button>
         <button className="btn ghost" onClick={()=>{ localStorage.removeItem('de_user'); localStorage.removeItem('de_token'); window.location.href='/' }}><i className="ri-logout-box-line"></i> Logout</button>
       </div>
 
