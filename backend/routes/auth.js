@@ -59,13 +59,9 @@ router.post('/signup', async (req,res)=>{
 router.post('/login', async (req,res)=>{
   try{
     const { email, password } = req.body
-    console.log("LOGIN REQ:", email, password)
     const user = await models.User.findOne({ where: { email } })
-    console.log("USER FROM DB:", user && user.email)
-    console.log("HASH FROM DB:", user && user.password)
     if(!user) return res.status(400).json({ error:'Invalid credentials' })
     const ok = await bcrypt.compare(password, user.password)
-    console.log("BCRYPT RESULT:", ok)
     if(!ok) return res.status(400).json({ error:'Invalid credentials' })
     const token = createToken(user)
     return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet }, token })
