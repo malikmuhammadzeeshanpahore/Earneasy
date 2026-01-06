@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
+import copyToClipboard from '../utils/clipboard'
 // Progress component removed from dashboard in new design
 
 export default function Dashboard(){
@@ -108,16 +109,26 @@ export default function Dashboard(){
           <h3 className="font-semibold">Referral</h3>
           <p className="text-sm text-slate-500">Invite code: <strong>{inviteCode}</strong></p>
           <div className="flex gap-2 mt-2">
-            <button className="inline-block px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white" onClick={()=>{
+            <button className="inline-block px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white" onClick={async ()=>{
               if(!inviteCode) return alert('Invite code not ready')
-              navigator.clipboard && navigator.clipboard.writeText(inviteCode)
-              alert('Copied code: ' + inviteCode)
+              try{
+                await copyToClipboard(inviteCode)
+                alert('Copied code: ' + inviteCode)
+              }catch(e){
+                console.error('Copy failed', e)
+                alert('Could not copy invite code')
+              }
             }}>Copy Code</button>
-            <button className="inline-block px-3 py-2 rounded-lg border border-slate-200 text-slate-800" onClick={()=>{
+            <button className="inline-block px-3 py-2 rounded-lg border border-slate-200 text-slate-800" onClick={async ()=>{
               if(!inviteCode) return alert('Invite code not ready')
               const link = window.location.origin + '/auth?ref=' + inviteCode
-              navigator.clipboard && navigator.clipboard.writeText(link)
-              alert('Copied link: ' + link)
+              try{
+                await copyToClipboard(link)
+                alert('Copied link: ' + link)
+              }catch(e){
+                console.error('Copy failed', e)
+                alert('Could not copy invite link')
+              }
             }}>Copy Link</button>
           </div>
           <p className="text-sm text-slate-500 mt-2">Team rewards: L1 10% • L2 5% • L3 1%</p>

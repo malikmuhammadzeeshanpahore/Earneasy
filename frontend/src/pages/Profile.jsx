@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import api from '../services/api'
+import copyToClipboard from '../utils/clipboard'
 
 export default function Profile(){
   const [user,setUser]=useState(null)
@@ -79,9 +80,9 @@ export default function Profile(){
       </div>
 
       <div style={{marginTop:16,display:'flex',gap:8,flexWrap:'wrap'}}>
-        <button className="btn ghost" onClick={()=>{ const code = user.inviteCode || user.id; if(!code) return alert('Invite code not ready'); navigator.clipboard && navigator.clipboard.writeText(code); alert('Invite code copied: ' + code) }}><i className="ri-link-m"></i> Copy Invite Code</button>
-        <button className="btn ghost" onClick={()=>{ const code = user.inviteCode || user.id; if(!code) return alert('Invite code not ready'); const link = window.location.origin + '/auth?ref=' + code; navigator.clipboard && navigator.clipboard.writeText(link); alert('Invite link copied: ' + link) }}><i className="ri-share-line"></i> Copy Invite Link</button>
-        <button className="btn ghost" onClick={()=>{ /* placeholder for download */ alert('App download link copied'); navigator.clipboard && navigator.clipboard.writeText('https://example.com/app-download') }}><i className="ri-download-line"></i> App Download</button>
+        <button className="btn ghost" onClick={async ()=>{ const code = user.inviteCode || user.id; if(!code) return alert('Invite code not ready'); try{ await copyToClipboard(code); alert('Invite code copied: ' + code) }catch(e){ console.error('Copy failed', e); alert('Could not copy invite code') } }}><i className="ri-link-m"></i> Copy Invite Code</button>
+        <button className="btn ghost" onClick={async ()=>{ const code = user.inviteCode || user.id; if(!code) return alert('Invite code not ready'); const link = window.location.origin + '/auth?ref=' + code; try{ await copyToClipboard(link); alert('Invite link copied: ' + link) }catch(e){ console.error('Copy failed', e); alert('Could not copy invite link') } }}><i className="ri-share-line"></i> Copy Invite Link</button>
+        <button className="btn ghost" onClick={async ()=>{ /* placeholder for download */ const dl = 'https://example.com/app-download'; try{ await copyToClipboard(dl); alert('App download link copied') }catch(e){ console.error('Copy failed', e); alert('Could not copy download link') } }}><i className="ri-download-line"></i> App Download</button>
         <button className="btn ghost" onClick={()=>{ localStorage.removeItem('de_user'); localStorage.removeItem('de_token'); window.location.href='/' }}><i className="ri-logout-box-line"></i> Logout</button>
       </div>
 
