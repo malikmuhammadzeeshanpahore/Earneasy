@@ -11,6 +11,7 @@ export default function Admin(){
   const [newIp, setNewIp] = useState('')
   const [newNote, setNewNote] = useState('')
   const [users, setUsers] = useState([])
+  const [userDetails, setUserDetails] = useState(null) // loaded per-user details (transactions, deposits)
   const [transactions, setTransactions] = useState([])
   const [withdraws, setWithdraws] = useState([])
 
@@ -171,8 +172,43 @@ export default function Admin(){
               {users.map(u=> (
                 <div key={u.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <div className="small muted">{u.email} — {u.name} — {u.role} — Active: {String(u.isActive)}</div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="btn" onClick={async ()=>{ try{ const d = await api.adminGetUser(u.id); if(d && d.user){ setUserDetails(d) } }catch(e){ console.error('Get user details failed', e) } }}>Details</button>
+                  </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {userDetails && userDetails.user && (
+            <div style={{marginTop:12,borderTop:'1px solid #eee',paddingTop:12}}>
+              <h4>User details</h4>
+              <div className="small muted">ID: {userDetails.user.id} — Name: {userDetails.user.name} — Email: {userDetails.user.email} — Phone: {userDetails.user.phone || '—'}</div>
+              <div className="small muted">Wallet: Rs {userDetails.user.wallet} — Role: {userDetails.user.role} — Active: {String(userDetails.user.isActive)}</div>
+              <div className="small muted">Payout: {userDetails.user.payoutName || '—'} / {userDetails.user.payoutMethod || '—'} / {userDetails.user.payoutAccount || '—'}</div>
+              <div style={{marginTop:8}}>
+                <h5>Recent Transactions</h5>
+                {userDetails.transactions && userDetails.transactions.length>0 ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {userDetails.transactions.map(tx=> (
+                      <div key={tx.id} className="small muted">{tx.createdAt} — {tx.type} — Rs {tx.amount} {tx.meta && tx.meta.fee ? `(fee: Rs ${tx.meta.fee} net: Rs ${tx.meta.net})` : ''} — status: {tx.status}</div>
+                    ))}
+                  </div>
+                ) : <div className="small muted">No transactions</div>}
+              </div>
+              <div style={{marginTop:8}}>
+                <h5>Deposits</h5>
+                {userDetails.deposits && userDetails.deposits.length>0 ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {userDetails.deposits.map(dep=> (
+                      <div key={dep.id} className="small muted">{dep.createdAt} — Rs {dep.amount} — {dep.method} — Txn: {dep.transactionId} — Account holder: {dep.accountHolder || '—'} {dep.screenshot ? <a href={api.assetUrl(dep.screenshot)} target="_blank" rel="noreferrer"> View</a> : ''} — status: {dep.status}</div>
+                    ))}
+                  </div>
+                ) : <div className="small muted">No deposits</div>}
+              </div>
+              <div style={{marginTop:8}}>
+                <button className="btn ghost" onClick={()=>setUserDetails(null)}>Close</button>
+              </div>
             </div>
           )}
         </div>

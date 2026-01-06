@@ -102,6 +102,16 @@ router.get('/users', allowAdminOrSecret(async (req,res)=>{
   res.json({ users })
 }))
 
+// get user details (transactions and deposits) for admin view
+router.get('/users/:id', allowAdminOrSecret(async (req,res)=>{
+  const id = req.params.id
+  const user = await models.User.findByPk(id, { attributes: ['id','name','email','phone','role','wallet','payoutName','payoutMethod','payoutAccount','isActive','inviteCode','referredBy','createdAt'] })
+  if(!user) return res.status(404).json({ error: 'Not found' })
+  const transactions = await models.Transaction.findAll({ where: { userId: id }, order: [['createdAt','DESC']] })
+  const deposits = await models.Deposit.findAll({ where: { userId: id }, order: [['createdAt','DESC']] })
+  res.json({ user, transactions, deposits })
+}))
+
 // list all transactions
 router.get('/transactions', allowAdminOrSecret(async (req,res)=>{
   const txs = await models.Transaction.findAll({ order:[['createdAt','DESC']] })

@@ -178,6 +178,11 @@ export async function adminGetTransactions(){
   return res.json()
 }
 
+export async function adminGetUser(id){
+  const res = await fetch(BASE + `/admin/users/${encodeURIComponent(id)}`, { headers: { ...adminHeaders() } })
+  return res.json()
+}
+
 export async function adminApproveWithdraw(id){
   const res = await fetch(BASE + `/admin/withdraws/${id}/approve`, { method:'POST', headers: { ...adminHeaders() } })
   return res.json()
