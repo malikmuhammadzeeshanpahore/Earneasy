@@ -50,7 +50,7 @@ export default function Deposit(){
 // Comment
   return (
     <div>
-      <h1 className="text-4xl font-extrabold text-brand mb-4 text-center">JazzCash</h1>
+      <h1 className="text-4xl font-extrabold text-brand mb-4 text-center">JazzCash Deposit</h1>
       <h2 className="text-center">Submit Deposit</h2>
       <div className="card" style={{maxWidth:700, marginBottom:12}}>
         <h4 className="font-semibold">Top-up Instructions:</h4>
