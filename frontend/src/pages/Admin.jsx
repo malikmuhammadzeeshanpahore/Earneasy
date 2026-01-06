@@ -187,11 +187,21 @@ export default function Admin(){
           <h3>Withdraw Requests</h3>
           {withdraws.length===0 ? <div className="small muted">No withdraw requests</div> : (
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
-              {withdraws.map(w=> (
+              {withdraws.map(w=> {
+                const u = users.find(x=> x.id === w.userId) || {}
+                const created = w.createdAt ? new Date(w.createdAt).toLocaleString() : '—'
+                const payoutName = w.meta && w.meta.payoutName ? w.meta.payoutName : (w.meta && w.meta.payoutName === '' ? '' : 'N/A')
+                const payoutMethod = w.meta && w.meta.payoutMethod ? w.meta.payoutMethod : 'N/A'
+                const payoutAccount = w.meta && w.meta.payoutAccount ? w.meta.payoutAccount : 'N/A'
+                const fee = w.meta && w.meta.fee ? w.meta.fee : '—'
+                const net = w.meta && w.meta.net ? w.meta.net : '—'
+                return (
                 <div key={w.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <div>
-                    <div className="small muted">User: {w.userId} — Requested: Rs {w.amount} — status: {w.status}</div>
-                    <div className="small muted">Account: {w.meta && w.meta.account ? w.meta.account : 'N/A'} — Fee: Rs {w.meta && w.meta.fee ? w.meta.fee : '—'} — Net: Rs {w.meta && w.meta.net ? w.meta.net : '—'}</div>
+                    <div className="small muted">User: {u.email || w.userId} — {u.name ? u.name : ''} — Requested: Rs {w.amount} — status: {w.status}</div>
+                    <div className="small muted">Time: {created}</div>
+                    <div className="small muted">Account holder: {payoutName} — Method: {payoutMethod} — Account: {payoutAccount}</div>
+                    <div className="small muted">Amount: Rs {w.amount} — Fee: Rs {fee} — Net: Rs {net}</div>
                   </div>
                   <div style={{display:'flex',flexDirection:'column',gap:8}}>
                     {w.status === 'pending' && <button className="btn" onClick={()=>approveWithdraw(w.id)}>Approve</button>}
@@ -200,7 +210,7 @@ export default function Admin(){
                     {(w.status === 'pending' || w.status === 'approved' || w.status === 'sent') && <button className="btn ghost" onClick={()=>api.adminRejectWithdraw(w.id).then(async ()=>{ const wds = await api.adminGetWithdraws(); if(wds.withdraws) setWithdraws(wds.withdraws) }).catch(e=>console.error(e))}>Reject</button>}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>
