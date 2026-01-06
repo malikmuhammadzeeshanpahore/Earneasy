@@ -1,0 +1,5 @@
+Sequelize sync with { alter: true } failed: SQLITE_ERROR: table Users_backup has 18 columns but 23 values were supplied
+Falling back to sequelize.sync() (no alter).
+If you need to apply model schema changes, consider removing the SQLite file at backend/data.sqlite to recreate the schema (make a backup first).
+Admin seed failed (continuing): Validation error
+Backend running on 4000 and bound to 0.0.0.0

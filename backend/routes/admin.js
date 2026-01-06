@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { models } = require('../models')
+const { models, sequelize } = require('../models')
 const { authenticate, requireAdmin } = require('../middleware/auth')
 
 // List pending deposits
@@ -83,6 +83,25 @@ router.post('/deposits/:id/approve', allowAdminOrSecret(async (req,res)=>{
   user.isActive = true // activate account on deposit approval
   await user.save()
   await models.Transaction.create({ id: 't'+Date.now(), userId: user.id, type:'deposit', amount: dep.amount, meta: { depositId: dep.id } })
+
+  // REFERRAL BONUSES: distribute up to 3 levels (10%, 5%, 1%) based on referredBy chain
+  try{
+    const levels = [0.10, 0.05, 0.01]
+    let currentRefId = user.referredBy
+    for(let lvl=0; lvl<levels.length && currentRefId; lvl++){
+      const refUser = await models.User.findByPk(currentRefId)
+      if(!refUser){ currentRefId = null; break }
+      const bonus = Math.round((dep.amount * levels[lvl]) * 100) / 100
+      if(bonus > 0){
+        refUser.wallet = (refUser.wallet || 0) + bonus
+        await refUser.save()
+        await models.Transaction.create({ id: 't'+Date.now()+String(lvl+1), userId: refUser.id, type:'referral', amount: bonus, status: 'completed', meta: { depositId: dep.id, fromUserId: user.id, level: lvl+1 } })
+      }
+      // move up the chain
+      currentRefId = refUser.referredBy
+    }
+  }catch(e){ console.error('Failed to process referral bonuses', e) }
+
   res.json({ ok:true })
 }))
 
@@ -109,13 +128,39 @@ router.get('/users/:id', allowAdminOrSecret(async (req,res)=>{
   if(!user) return res.status(404).json({ error: 'Not found' })
   const transactions = await models.Transaction.findAll({ where: { userId: id }, order: [['createdAt','DESC']] })
   const deposits = await models.Deposit.findAll({ where: { userId: id }, order: [['createdAt','DESC']] })
-  res.json({ user, transactions, deposits })
+  // include user's packages and direct referrals (level 1)
+  const userPackages = await models.UserPackage.findAll({ where: { userId: id }, include: [{ model: models.Package }], order: [['activatedAt','DESC']] })
+  const referrals = await models.User.findAll({ where: { referredBy: id }, attributes: ['id','name','email','createdAt'] })
+  res.json({ user, transactions, deposits, userPackages, referrals })
 }))
 
 // list all transactions
 router.get('/transactions', allowAdminOrSecret(async (req,res)=>{
   const txs = await models.Transaction.findAll({ order:[['createdAt','DESC']] })
   res.json({ transactions: txs })
+}))
+
+// Reconcile missing UserPackage records from purchase transactions
+router.post('/reconcile-purchases', allowAdminOrSecret(async (req,res)=>{
+  try{
+    const purchases = await models.Transaction.findAll({ where: { type: 'purchase' }, order:[['createdAt','ASC']] })
+    let created = 0, skipped = 0, errors = 0
+    for(const p of purchases){
+      try{
+        const upId = p.meta && p.meta.userPackageId
+        const pkgId = p.meta && p.meta.packageId
+        if(!upId || !pkgId){ skipped++; continue }
+        const exists = await models.UserPackage.findByPk(upId)
+        if(exists){ skipped++; continue }
+        const pkg = await models.Package.findByPk(pkgId)
+        const activatedAt = p.createdAt || new Date()
+        const expiresAt = pkg ? new Date(new Date(activatedAt).getTime() + (pkg.duration || 90) * 24 * 60 * 60 * 1000) : null
+        await models.UserPackage.create({ id: upId, userId: p.userId, packageId: pkgId, activatedAt, expiresAt })
+        created++
+      }catch(e){ console.error('Reconcile error for tx', p.id, e && e.message); errors++ }
+    }
+    res.json({ ok:true, created, skipped, errors })
+  }catch(e){ console.error('Reconcile operation failed', e); res.status(500).json({ error: 'server' }) }
 }))
 
 // approve withdraw
@@ -170,6 +215,104 @@ router.post('/withdraws/:id/reject', allowAdminOrSecret(async (req,res)=>{
   t.status = 'rejected'
   await t.save()
   res.json({ ok:true })
+}))
+
+// Admin: manually activate package for a user
+// body: { packageId, charge: 'none'|'wallet'|'external' }
+router.post('/users/:id/activate-package', allowAdminOrSecret(async (req,res)=>{
+  const id = req.params.id
+  const { packageId, charge = 'none' } = req.body || {}
+  if(!packageId) return res.status(400).json({ error: 'Missing packageId' })
+  const user = await models.User.findByPk(id)
+  if(!user) return res.status(404).json({ error: 'Not found' })
+  const pkg = await models.Package.findByPk(packageId)
+  if(!pkg) return res.status(404).json({ error: 'Invalid package' })
+  const upId = 'up'+Date.now()+Math.floor(Math.random()*1000)
+  const activatedAt = new Date()
+  const expiresAt = pkg ? new Date(activatedAt.getTime() + (pkg.duration || 90) * 24 * 60 * 60 * 1000) : null
+  try{
+    await sequelize.transaction(async (tx)=>{
+      await models.UserPackage.create({ id: upId, userId: user.id, packageId: pkg.id, activatedAt, expiresAt }, { transaction: tx })
+      if(charge === 'wallet'){
+        if((user.wallet || 0) < pkg.price) throw new Error('insufficient_funds')
+        user.wallet = (user.wallet || 0) - pkg.price
+        await user.save({ transaction: tx })
+        await models.Transaction.create({ id: 't'+Date.now(), userId: user.id, type:'purchase', amount: pkg.price, meta: { packageId: pkg.id, userPackageId: upId, adminActivated: true } }, { transaction: tx })
+        // distribute referral commissions (10%,5%,1%) up the chain
+        try{
+          const levels = [0.10,0.05,0.01]
+          let refId = user.referredBy
+          for(let lvl=0; lvl<levels.length && refId; lvl++){
+            const refUser = await models.User.findByPk(refId)
+            if(!refUser){ refId = null; break }
+            const commission = Math.round((pkg.price * levels[lvl]) * 100) / 100
+            if(commission > 0){
+              refUser.wallet = (refUser.wallet || 0) + commission
+              await refUser.save({ transaction: tx })
+              await models.Transaction.create({ id: 't'+Date.now()+String(lvl+1), userId: refUser.id, type:'referral', amount: commission, meta: { level: lvl+1, fromUser: user.id, packageId: pkg.id, userPackageId: upId, adminActivated: true } }, { transaction: tx })
+            }
+            refId = refUser.referredBy
+          }
+        }catch(e){ console.error('Failed to distribute referral commissions during admin activation', e) }
+      }
+    })
+    return res.json({ ok:true, userPackageId: upId })
+  }catch(e){
+    if(e && e.message === 'insufficient_funds') return res.status(400).json({ error: 'insufficient_funds' })
+    console.error('Admin activate package failed', e)
+    return res.status(500).json({ error: 'server' })
+  }
+}))
+
+// Admin: link referral manually by emails (referredByEmail -> refereeEmail)
+// body: { referredByEmail, refereeEmail, force }
+router.post('/users/link-referral', allowAdminOrSecret(async (req,res)=>{
+  const { referredByEmail, refereeEmail, force } = req.body || {}
+  if(!referredByEmail || !refereeEmail) return res.status(400).json({ error: 'Missing emails' })
+  const referred = await models.User.findOne({ where: { email: referredByEmail } })
+  const referee = await models.User.findOne({ where: { email: refereeEmail } })
+  if(!referred || !referee) return res.status(404).json({ error: 'User(s) not found' })
+  if(referee.referredBy && !force && referee.referredBy !== referred.id) return res.status(400).json({ error: 'referee_already_has_referrer' })
+  referee.referredBy = referred.id
+  await referee.save()
+  res.json({ ok:true })
+}))
+
+// Admin: reconcile referral bonuses for approved deposits
+// body: { dryRun: true|false, userId: optional }
+router.post('/reconcile-referral-bonuses', allowAdminOrSecret(async (req,res)=>{
+  try{
+    const { dryRun, userId } = req.body || {}
+    const where = { status: 'approved' }
+    if(userId) where.userId = userId
+    const deposits = await models.Deposit.findAll({ where })
+    let created = 0, skipped = 0, errors = 0
+    for(const dep of deposits){
+      try{
+        const depositor = await models.User.findByPk(dep.userId)
+        if(!depositor) { skipped++; continue }
+        const levels = [0.10,0.05,0.01]
+        let currentRefId = depositor.referredBy
+        for(let lvl=0; lvl<levels.length && currentRefId; lvl++){
+          const refUser = await models.User.findByPk(currentRefId)
+          if(!refUser){ currentRefId = null; break }
+          const amount = Math.round((dep.amount * levels[lvl]) * 100) / 100
+          // look for existing referral tx for this deposit/level by searching matching meta in JS
+          const existing = (await models.Transaction.findAll({ where: { type: 'referral', userId: refUser.id } })).find(t => t.meta && t.meta.depositId === dep.id && String(t.meta.level) === String(lvl+1) && t.meta.fromUserId === dep.userId)
+          if(existing){ skipped++; } else {
+            if(!dryRun){
+              refUser.wallet = (refUser.wallet || 0) + amount
+              await refUser.save()
+              await models.Transaction.create({ id: 't'+Date.now()+String(lvl+1), userId: refUser.id, type:'referral', amount, status: 'completed', meta: { depositId: dep.id, fromUserId: dep.userId, level: lvl+1 } })
+            }
+            created++
+          }
+          currentRefId = refUser.referredBy
+        }
+      }catch(e){ console.error('reconcile-referral error for deposit', dep.id, e); errors++ }
+    }
+    res.json({ ok:true, created, skipped, errors, dryRun: !!dryRun })
+  }catch(e){ console.error('reconcile-referral-bonuses failed', e); res.status(500).json({ error: 'server' }) }
 }))
 
 module.exports = router

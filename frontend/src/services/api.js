@@ -24,8 +24,8 @@ function authHeaders(){
   return token ? { 'Authorization': 'Bearer ' + token } : {}
 }
 
-export async function signup({name,email,phone,password}){
-  const res = await fetch(BASE + '/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,email,phone,password}) })
+export async function signup({name,email,phone,password,referral}){
+  const res = await fetch(BASE + '/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,email,phone,password,referral}) })
   return res.json()
 }
 
@@ -41,6 +41,16 @@ export async function me(){
 
 export async function getPackages(){
   const res = await fetch(BASE + '/packages')
+  return res.json()
+}
+
+export async function getMyPackages(){
+  const res = await fetch(BASE + '/packages/mine', { headers: { ...authHeaders() } })
+  return res.json()
+}
+
+export async function claimPackage(userPackageId){
+  const res = await fetch(BASE + `/packages/${encodeURIComponent(userPackageId)}/claim`, { method: 'POST', headers: { ...authHeaders() } })
   return res.json()
 }
 
@@ -183,6 +193,26 @@ export async function adminGetUser(id){
   return res.json()
 }
 
+export async function adminActivatePackage(userId, payload){
+  const res = await fetch(BASE + `/admin/users/${encodeURIComponent(userId)}/activate-package`, { method:'POST', headers: { 'Content-Type':'application/json', ...adminHeaders() }, body: JSON.stringify(payload) })
+  return res.json()
+}
+
+export async function adminLinkReferral(payload){
+  const res = await fetch(BASE + `/admin/users/link-referral`, { method:'POST', headers: { 'Content-Type':'application/json', ...adminHeaders() }, body: JSON.stringify(payload) })
+  return res.json()
+}
+
+export async function adminReconcileReferralBonuses(payload){
+  const res = await fetch(BASE + `/admin/reconcile-referral-bonuses`, { method:'POST', headers: { 'Content-Type':'application/json', ...adminHeaders() }, body: JSON.stringify(payload) })
+  return res.json()
+}
+
+export async function adminReconcilePurchases(){
+  const res = await fetch(BASE + '/admin/reconcile-purchases', { method: 'POST', headers: { ...adminHeaders() } })
+  return res.json()
+}
+
 export async function adminApproveWithdraw(id){
   const res = await fetch(BASE + `/admin/withdraws/${id}/approve`, { method:'POST', headers: { ...adminHeaders() } })
   return res.json()
@@ -210,17 +240,23 @@ export async function adminConfirmWithdraw(id){
 
 export function setToken(t){ token = t; if(t) localStorage.setItem('de_token', t); else localStorage.removeItem('de_token') }
 
+export async function getReferralStats(){
+  const res = await fetch(BASE + '/auth/referrals', { headers: { ...authHeaders() } })
+  return res.json()
+}
+
 export default {
-  signup, login, me, getPackages, buyPackage, getTasks, completeTask,
+  signup, login, me, getPackages, getMyPackages, claimPackage, buyPackage, getTasks, completeTask,
   getBalance, getTransactions, withdraw, submitDeposit, getMyDeposits,
   claimDaily,
-  updateMe,
+  updateMe, getReferralStats,
   // admin helpers
   adminGetDeposits, adminApproveDeposit, adminRejectDeposit,
   adminGetBlocked, adminUnblock, adminGetUsers, adminGetTransactions,
   adminGetWhitelist, adminAddWhitelist, adminRemoveWhitelist,
   adminGetWithdraws, adminMarkWithdrawSent, adminConfirmWithdraw,
   adminApproveWithdraw, adminRejectWithdraw,
+  adminGetUser, adminActivatePackage, adminLinkReferral, adminReconcileReferralBonuses, adminReconcilePurchases,
   // secrets & auth
   assetUrl,
   setAdminSecret, setToken

@@ -11,6 +11,8 @@ export default function Profile(){
   const [payoutMethod,setPayoutMethod]=useState('jazzcash')
   const [payoutAccount,setPayoutAccount]=useState('')
 
+  const [referralStats, setReferralStats] = useState(null)
+
   useEffect(()=>{
     async function load(){
       try{
@@ -19,6 +21,8 @@ export default function Profile(){
         api.setToken(token)
         const r = await api.me()
         if(r.user){ setUser(r.user); setName(r.user.name || ''); setPayoutName(r.user.payoutName || ''); setPayoutMethod(r.user.payoutMethod || 'jazzcash'); setPayoutAccount(r.user.payoutAccount || '') }
+        // load referral stats
+        try{ const s = await api.getReferralStats(); if(s) setReferralStats(s) }catch(e){ console.error('Failed to load referral stats', e) }
       }catch(e){
         console.error('Failed to load profile', e)
       }
@@ -90,6 +94,26 @@ export default function Profile(){
         <a className="btn ghost" href="https://earneasy.fun/download/earneasy.apk" download><i className="ri-download-line"></i> App Download</a>
         <button className="btn ghost" onClick={()=>{ localStorage.removeItem('de_user'); localStorage.removeItem('de_token'); window.location.href='/' }}><i className="ri-logout-box-line"></i> Logout</button>
       </div>
+
+      {referralStats && (
+        <div style={{marginTop:16}}>
+          <h3 style={{margin:0}}>Referral</h3>
+          <p className="small muted">Invite friends with your invite code to earn bonuses.</p>
+          <div className="small muted">Your referral earnings: Rs {referralStats.referralEarnings || 0}</div>
+          <div className="small muted">Team: Level1 {referralStats.levels.level1} • Level2 {referralStats.levels.level2} • Level3 {referralStats.levels.level3} • Total {referralStats.levels.total}</div>
+          <div className="small muted">Team investment (approved deposits): Rs {referralStats.teamInvestment || 0}</div>
+          <div style={{marginTop:8}}>
+            <h5>Direct referrals</h5>
+            {referralStats.directMembers && referralStats.directMembers.length>0 ? (
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {referralStats.directMembers.map(dm=> (
+                  <div key={dm.id} className="small muted">{dm.createdAt} — {dm.email} — {dm.name}</div>
+                ))}
+              </div>
+            ) : <div className="small muted">No direct referrals yet</div>}
+          </div>
+        </div>
+      )}
 
       <div style={{marginTop:20}}>
         <h3 style={{margin:0}}>Change Password</h3>

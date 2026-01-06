@@ -25,28 +25,32 @@ export default function Dashboard(){
   },[])
 
   const [pkgInfo, setPkgInfo] = useState(null)
+  const [myPackages, setMyPackages] = useState([])
+  const [referralStats, setReferralStats] = useState(null)
   useEffect(()=>{
     async function loadPkg(){
       try{
-        if(!user || !user.currentPackageId) return
+        if(!user) return
         const pkgs = await api.getPackages()
         if(pkgs && pkgs.packages){
           const p = pkgs.packages.find(x=>x.id === user.currentPackageId)
           if(p) setPkgInfo(p)
         }
+        // load user's purchased packages
+        try{
+          api.setToken(localStorage.getItem('de_token'))
+          const m = await api.getMyPackages()
+          if(m && m.userPackages) setMyPackages(m.userPackages)
+        }catch(e){ console.error('Could not load my packages', e) }
+
+        // load referral stats
+        try{ const s = await api.getReferralStats(); if(s) setReferralStats(s) }catch(e){ console.error('Failed to load referral stats', e) }
       }catch(e){ console.error('Could not load package info', e) }
     }
     loadPkg()
   },[user])
 
-  if(!user) return (
-    <div className="bg-white/90 rounded-xl p-4 shadow-lg border max-w-3xl mx-auto">
-      <h3 className="text-lg font-semibold">Not signed in</h3>
-      <p className="text-muted text-sm">Please sign in to view your dashboard.</p>
-      <Link to="/auth" className="inline-block mt-3 px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white">Sign in</Link>
-    </div>
-  )
-  const claim = async ()=>{
+  const claim = async ()=>{ /* legacy single-claim kept for compatibility */
     try{
       api.setToken(localStorage.getItem('de_token'))
       const r = await api.claimDaily()
@@ -59,6 +63,31 @@ export default function Dashboard(){
       }
     }catch(e){ console.error('Claim failed', e); toast.show('Claim failed', 'error') }
   }
+
+  const claimFor = async (userPackageId, idx)=>{
+    try{
+      api.setToken(localStorage.getItem('de_token'))
+      const r = await api.claimPackage(userPackageId)
+      if(r.ok){
+        toast.show('Claimed Rs ' + r.amount, 'success')
+        setUser({ ...user, wallet: r.wallet })
+        localStorage.setItem('de_user', JSON.stringify({ ...JSON.parse(localStorage.getItem('de_user')||'{}'), wallet: r.wallet }))
+        // refresh packages
+        const m = await api.getMyPackages()
+        if(m && m.userPackages) setMyPackages(m.userPackages)
+      }else if(r.error){
+        toast.show(r.error, 'error')
+      }
+    }catch(e){ console.error('Claim failed', e); toast.show('Claim failed', 'error') }
+  }
+
+  if(!user) return (
+    <div className="bg-white/90 rounded-xl p-4 shadow-lg border max-w-3xl mx-auto">
+      <h3 className="text-lg font-semibold">Not signed in</h3>
+      <p className="text-muted text-sm">Please sign in to view your dashboard.</p>
+      <Link to="/auth" className="inline-block mt-3 px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white">Sign in</Link>
+    </div>
+  )
 
   const inviteCode = user.inviteCode || user.id
   const inviteLink = `${window.location.origin}/auth?ref=${inviteCode}`
@@ -92,18 +121,28 @@ export default function Dashboard(){
 
       <div className="grid">
         <div className="card">
-          <h3 className="font-semibold">Active Package</h3>
-          {user.currentPackageId ? (
-            <div>
-              <strong>{user.currentPackageId}</strong>
-              <p className="text-muted text-sm">Daily: Rs {user.currentPackageId ? '—' : '—'}</p>
-              <p className="text-muted text-sm">Daily: Rs {pkgInfo ? Number(pkgInfo.dailyClaim||0).toFixed(2) : '—'}</p>
-              <div className="mt-2">
-                <button className="inline-block px-3 py-2 rounded-lg bg-gradient-to-r from-brand to-brand-2 text-white" onClick={claim}>Claim Daily</button>
-              </div>
-            </div>
+          <h3 className="font-semibold">My Packages (owned: {myPackages.length})</h3>
+          {myPackages.length===0 ? (
+            <div className="text-sm text-slate-500">No packages purchased. <Link to="/packages" className="text-brand font-medium">Buy one</Link></div>
           ) : (
-            <div className="text-sm text-slate-500">No active package. <Link to="/packages" className="text-brand font-medium">Buy one</Link></div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {myPackages.map((up, idx)=>{
+                const p = up.Package || {}
+                const last = up.lastClaimedAt ? new Date(up.lastClaimedAt).toLocaleString() : 'Never'
+                const expires = up.expiresAt ? new Date(up.expiresAt).toLocaleString() : '—'
+                return (
+                  <div key={up.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div>
+                      <div><strong>{p.name || p.id}</strong> — Daily: Rs {p.dailyClaim ? Number(p.dailyClaim).toFixed(2) : '—'}</div>
+                      <div className="small muted">Activated: {up.activatedAt ? new Date(up.activatedAt).toLocaleString() : '—'} • Expires: {expires} • Last claim: {last}</div>
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button className="btn" onClick={()=>claimFor(up.id, idx)}>Claim</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
         </div>
 
@@ -134,6 +173,23 @@ export default function Dashboard(){
             }}>Copy Link</button>
           </div>
           <p className="text-sm text-slate-500 mt-2">Team rewards: L1 10% • L2 5% • L3 1%</p>
+          {referralStats && (
+            <div style={{marginTop:8}}>
+              <div className="small muted">Referral earnings: Rs {referralStats.referralEarnings || 0}</div>
+              <div className="small muted">Team: L1 {referralStats.levels.level1} • L2 {referralStats.levels.level2} • L3 {referralStats.levels.level3} • Total {referralStats.levels.total}</div>
+              <div className="small muted">Team investment: Rs {referralStats.teamInvestment || 0}</div>
+              <div style={{marginTop:8}}>
+                <h5>Direct referrals</h5>
+                {referralStats.directMembers && referralStats.directMembers.length>0 ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {referralStats.directMembers.map(dm=> (
+                      <div key={dm.id} className="small muted">{dm.createdAt} — {dm.email} — {dm.name}</div>
+                    ))}
+                  </div>
+                ) : <div className="small muted">No direct referrals yet</div>}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="card">

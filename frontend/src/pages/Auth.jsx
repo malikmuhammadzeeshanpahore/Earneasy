@@ -7,14 +7,16 @@ function SignUp({onSigned}){
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
   const [phone,setPhone]=useState('')
+  const [referral,setReferral]=useState(new URLSearchParams(window.location.search).get('ref') || '')
   const [err,setErr]=useState(null)
 
   async function submit(e){
     e.preventDefault()
     try{
-      // include referral code from URL if present
+      // include referral code from URL if present, preferring manual input if provided
       const urlRef = new URLSearchParams(window.location.search).get('ref')
-      const r = await api.signup({ name, email, phone, password, referral: urlRef })
+      const useRef = referral || urlRef || null
+      const r = await api.signup({ name, email, phone, password, referral: useRef })
       if(r.error) return setErr(r.error)
       // save token, fetch full profile, and handle registration bonus
       api.setToken(r.token)
@@ -43,6 +45,7 @@ function SignUp({onSigned}){
       <input placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} style={{display:'block',width:'100%',margin:'8px 0',padding:8}} />
       <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} style={{display:'block',width:'100%',margin:'8px 0',padding:8}} />
       <input placeholder="Phone" value={phone} onChange={e=>setPhone(e.target.value)} style={{display:'block',width:'100%',margin:'8px 0',padding:8}} />
+      <input placeholder="Referral code (optional)" value={referral} onChange={e=>setReferral(e.target.value)} style={{display:'block',width:'100%',margin:'8px 0',padding:8}} />
       <input placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} style={{display:'block',width:'100%',margin:'8px 0',padding:8}} />
       <button className="btn">Sign up</button>
     </form>

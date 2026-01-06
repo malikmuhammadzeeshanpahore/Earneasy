@@ -65,6 +65,36 @@ router.get('/me', authenticate, async (req,res)=>{
   return res.json({ user: { id: u.id, name:u.name, email:u.email, role:u.role, wallet:u.wallet, isActive: u.isActive, inviteCode: u.inviteCode, referredBy: u.referredBy, currentPackageId: u.currentPackageId, packageExpiresAt: u.packageExpiresAt, payoutName: u.payoutName, payoutMethod: u.payoutMethod, payoutAccount: u.payoutAccount, registrationBonusPending: u.registrationBonusPending } })
 })
 
+// referral stats for current user
+router.get('/referrals', authenticate, async (req,res)=>{
+  try{
+    const userId = req.user.id
+    // level 1: direct referrals
+    const level1 = await models.User.findAll({ where: { referredBy: userId }, attributes: ['id','name','email','createdAt'] })
+    const level1Ids = level1.map(u=>u.id)
+    // level 2
+    const level2 = level1Ids.length ? await models.User.findAll({ where: { referredBy: level1Ids }, attributes: ['id','name','email','createdAt'] }) : []
+    const level2Ids = level2.map(u=>u.id)
+    // level 3
+    const level3 = level2Ids.length ? await models.User.findAll({ where: { referredBy: level2Ids }, attributes: ['id','name','email','createdAt'] }) : []
+    const level3Ids = level3.map(u=>u.id)
+    const teamIds = [...level1Ids, ...level2Ids, ...level3Ids]
+
+    // sum of referral earnings for this user (transactions of type 'referral')
+    const referrals = await models.Transaction.findAll({ where: { userId, type: 'referral' } })
+    const totalReferralEarnings = referrals.reduce((s,r)=>s + (r.amount || 0), 0)
+
+    // sum of team investments (approved deposits)
+    let teamInvestment = 0
+    if(teamIds.length){
+      const deps = await models.Deposit.findAll({ where: { userId: teamIds, status: 'approved' } })
+      teamInvestment = deps.reduce((s,d)=>s + (d.amount || 0), 0)
+    }
+
+    return res.json({ levels: { level1: level1.length, level2: level2.length, level3: level3.length, total: teamIds.length }, teamInvestment, referralEarnings: totalReferralEarnings, referrals: referrals, directMembers: level1 })
+  }catch(e){ console.error('Referral stats failed', e); return res.status(500).json({ error:'server' }) }
+})
+
 // update profile (name only for demo)
 router.put('/me', authenticate, async (req,res)=>{
   const { name, payoutName, payoutMethod, payoutAccount } = req.body || {}

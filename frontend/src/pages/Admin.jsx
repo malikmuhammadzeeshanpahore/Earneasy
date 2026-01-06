@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api from '../services/api'
+import { useToast } from '../components/Toast'
 
 export default function Admin(){
   const adm = localStorage.getItem('de_user') ? JSON.parse(localStorage.getItem('de_user')) : null
@@ -14,6 +15,38 @@ export default function Admin(){
   const [userDetails, setUserDetails] = useState(null) // loaded per-user details (transactions, deposits)
   const [transactions, setTransactions] = useState([])
   const [withdraws, setWithdraws] = useState([])
+  const toast = useToast()
+  const [packages, setPackages] = useState([])
+  const [activatePackageId, setActivatePackageId] = useState(null)
+  const [activateCharge, setActivateCharge] = useState('none')
+  const [activationEmail, setActivationEmail] = useState('')
+  const [linkReferredByEmail, setLinkReferredByEmail] = useState('')
+  const [linkRefereeEmail, setLinkRefereeEmail] = useState('')
+  const [linkReferredByEmailGlobal, setLinkReferredByEmailGlobal] = useState('')
+  const [linkRefereeEmailGlobal, setLinkRefereeEmailGlobal] = useState('')
+
+  async function activateByEmail(){
+    if(!activationEmail) { toast.show('Enter user email', 'info'); return }
+    try{
+      // find user by email
+      const u = users.find(x => x.email === activationEmail)
+      if(!u){ toast.show('User not found', 'error'); return }
+      const r = await api.adminActivatePackage(u.id, { packageId: activatePackageId, charge: activateCharge })
+      if(r && r.ok){ toast.show('Package activated for ' + u.email, 'success'); const uu = await api.adminGetUsers(); if(uu.users) setUsers(uu.users) }
+      else if(r && r.error) toast.show(r.error, 'error')
+      else toast.show('Activation failed', 'error')
+    }catch(e){ console.error('Activate by email failed', e); toast.show('Server error', 'error') }
+  }
+
+  async function linkReferralGlobal(){
+    if(!linkReferredByEmailGlobal || !linkRefereeEmailGlobal){ toast.show('Enter both emails', 'info'); return }
+    try{
+      const r = await api.adminLinkReferral({ referredByEmail: linkReferredByEmailGlobal, refereeEmail: linkRefereeEmailGlobal, force: true })
+      if(r && r.ok){ toast.show('Referral linked', 'success'); const uu = await api.adminGetUsers(); if(uu.users) setUsers(uu.users) }
+      else if(r && r.error) toast.show(r.error, 'error')
+      else toast.show('Failed to link', 'error')
+    }catch(e){ console.error('Link referral global failed', e); toast.show('Server error', 'error') }
+  }
 
   useEffect(()=>{
     async function load(){
@@ -27,6 +60,8 @@ export default function Admin(){
   if(w.whitelist) setWhitelist(w.whitelist)
         const u = await api.adminGetUsers()
         if(u.users) setUsers(u.users)
+        const p = await api.getPackages()
+        if(p.packages) setPackages(p.packages)
         const t = await api.adminGetTransactions()
         if(t.transactions) setTransactions(t.transactions)
         const wds = await api.adminGetWithdraws()
@@ -86,9 +121,86 @@ export default function Admin(){
     }catch(e){ console.error('Unblock failed', e) }
   }
 
+  async function adminActivatePackageForUser(userId){
+    if(!activatePackageId){ toast.show('Select a package first', 'info'); return }
+    try{
+      const r = await api.adminActivatePackage(userId, { packageId: activatePackageId, charge: activateCharge })
+      if(r && r.ok){
+        toast.show('Package activated', 'success')
+        const d = await api.adminGetUser(userId); if(d && d.user) setUserDetails(d)
+        const u = await api.adminGetUsers(); if(u.users) setUsers(u.users)
+      }else if(r && r.error) toast.show(r.error, 'error')
+      else toast.show('Activation failed', 'error')
+    }catch(e){ console.error('Admin activate failed', e); toast.show('Server error', 'error') }
+  }
+
+  async function adminLinkReferralAction(){
+    if(!linkReferredByEmail || !linkRefereeEmail){ toast.show('Enter both emails', 'info'); return }
+    try{
+      const r = await api.adminLinkReferral({ referredByEmail: linkReferredByEmail, refereeEmail: linkRefereeEmail, force: true })
+      if(r && r.ok){
+        toast.show('Referral linked', 'success')
+        // refresh users and user details if relevant
+        const u = await api.adminGetUsers(); if(u.users) setUsers(u.users)
+        if(userDetails && userDetails.user && userDetails.user.email === linkRefereeEmail){ const d = await api.adminGetUser(userDetails.user.id); if(d && d.user) setUserDetails(d) }
+      }else if(r && r.error) toast.show(r.error, 'error')
+      else toast.show('Failed to link', 'error')
+    }catch(e){ console.error('Link referral failed', e); toast.show('Server error', 'error') }
+  }
+
+  async function runReconcile(userId, dryRun){
+    try{
+      const r = await api.adminReconcileReferralBonuses({ dryRun: !!dryRun, userId })
+      if(r && r.ok){
+        toast.show(`Reconcile: created ${r.created} skipped ${r.skipped}`, 'success')
+        if(!dryRun){ const d = await api.adminGetUser(userId); if(d && d.user) setUserDetails(d); const u = await api.adminGetUsers(); if(u.users) setUsers(u.users) }
+      }else if(r && r.error) toast.show(r.error, 'error')
+      else toast.show('Reconcile failed', 'error')
+    }catch(e){ console.error('Run reconcile failed', e); toast.show('Server error', 'error') }
+  }
+
+  async function runGlobalReconcile(dryRun){
+    try{
+      const r = await api.adminReconcileReferralBonuses({ dryRun: !!dryRun })
+      if(r && r.ok){
+        toast.show(`Global reconcile: created ${r.created} skipped ${r.skipped}`, 'success')
+      } else if(r && r.error){
+        toast.show(r.error,'error')
+      } else {
+        toast.show('Reconcile failed','error')
+      }
+    }catch(e){ console.error('Global reconcile failed', e); toast.show('Server error', 'error') }
+  }
+
   return (
     <div>
       <h2>Admin Panel</h2>
+      <div style={{marginBottom:12,display:'flex',gap:12,flexWrap:'wrap'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <input placeholder="user email" value={activationEmail} onChange={e=>setActivationEmail(e.target.value)} style={{width:200}} />
+          <select value={activatePackageId || ''} onChange={e=>setActivatePackageId(e.target.value)} style={{minWidth:220}}>
+            <option value="">-- select package --</option>
+            {packages.map(p=> <option key={p.id} value={p.id}>{p.name} — Rs {p.price}</option>)}
+          </select>
+          <select value={activateCharge} onChange={e=>setActivateCharge(e.target.value)}>
+            <option value="none">Grant (no charge)</option>
+            <option value="wallet">Charge user's wallet</option>
+            <option value="external">Mark as external payment</option>
+          </select>
+          <button className="btn" onClick={activateByEmail}>Activate by email</button>
+        </div>
+
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <input placeholder="referredBy email" value={linkReferredByEmailGlobal} onChange={e=>setLinkReferredByEmailGlobal(e.target.value)} style={{width:220}} />
+          <input placeholder="referee email" value={linkRefereeEmailGlobal} onChange={e=>setLinkRefereeEmailGlobal(e.target.value)} style={{width:220}} />
+          <button className="btn ghost" onClick={linkReferralGlobal}>Link referral</button>
+        </div>
+
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <button className="btn ghost" onClick={()=>runGlobalReconcile(true)} style={{marginRight:8}}>Global reconcile (dry-run)</button>
+          <button className="btn" onClick={()=>{ if(!confirm('Run global reconcile? This will credit wallets when applied. Are you sure?')) return; runGlobalReconcile(false) }}>Global reconcile (apply)</button>
+        </div>
+      </div>
       <div className="grid">
         <div className="card">
           <h3>Pending Deposits</h3>
@@ -206,6 +318,58 @@ export default function Admin(){
                   </div>
                 ) : <div className="small muted">No deposits</div>}
               </div>
+
+              <div style={{marginTop:8}}>
+                <h5>User Packages</h5>
+                {userDetails.userPackages && userDetails.userPackages.length>0 ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {userDetails.userPackages.map(up=> (
+                      <div key={up.id} className="small muted">{up.activatedAt} — {up.Package ? up.Package.name : up.packageId} — Expires: {up.expiresAt || '—'} — ID: {up.id}</div>
+                    ))}
+                  </div>
+                ) : <div className="small muted">No packages</div>}
+              </div>
+
+              <div style={{marginTop:8}}>
+                <h5>Referrals</h5>
+                {userDetails.referrals && userDetails.referrals.length>0 ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {userDetails.referrals.map(r=> (
+                      <div key={r.id} className="small muted">{r.email} — {r.name || '—'} — Joined: {r.createdAt}</div>
+                    ))}
+                  </div>
+                ) : <div className="small muted">No referrals</div>}
+              </div>
+              <div style={{marginTop:8}}>
+                <h5>Admin Actions</h5>
+                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                  <div>
+                    <div className="small muted">Activate package for this user</div>
+                    <select value={activatePackageId || ''} onChange={e=>setActivatePackageId(e.target.value)} style={{minWidth:220,marginRight:8}}>
+                      <option value="">-- select package --</option>
+                      {packages.map(p=> <option key={p.id} value={p.id}>{p.name} — Rs {p.price}</option>)}
+                    </select>
+                    <select value={activateCharge} onChange={e=>setActivateCharge(e.target.value)} style={{marginRight:8}}>
+                      <option value="none">Grant (no charge)</option>
+                      <option value="wallet">Charge user's wallet</option>
+                      <option value="external">Mark as external payment</option>
+                    </select>
+                    <button className="btn" onClick={async ()=>{ try{ await adminActivatePackageForUser(userDetails.user.id) }catch(e){ console.error(e) } }}>Activate</button>
+                  </div>
+                  <div>
+                    <div className="small muted">Link referral (referredBy → referee)</div>
+                    <input placeholder="referredBy email" value={linkReferredByEmail} onChange={e=>setLinkReferredByEmail(e.target.value)} style={{width:220,marginRight:8}} />
+                    <input placeholder="referee email" value={linkRefereeEmail} onChange={e=>setLinkRefereeEmail(e.target.value)} style={{width:220,marginRight:8}} />
+                    <button className="btn ghost" onClick={async ()=>{ try{ await adminLinkReferralAction() }catch(e){ console.error(e) } }}>Link</button>
+                  </div>
+                  <div>
+                    <div className="small muted">Reconcile referral bonuses for this user</div>
+                    <button className="btn ghost" onClick={async ()=>{ try{ await runReconcile(userDetails.user.id, true) }catch(e){ console.error(e) } }}>Dry run</button>
+                    <button className="btn" onClick={async ()=>{ if(!confirm('Apply reconcile for this user?')) return; try{ await runReconcile(userDetails.user.id, false) }catch(e){ console.error(e) } }}>Apply</button>
+                  </div>
+                </div>
+              </div>
+
               <div style={{marginTop:8}}>
                 <button className="btn ghost" onClick={()=>setUserDetails(null)}>Close</button>
               </div>

@@ -64,6 +64,16 @@ const Deposit = sequelize.define('Deposit', {
   submitIp: DataTypes.STRING
 })
 
+// track package purchases per user so a user can own multiple packages
+const UserPackage = sequelize.define('UserPackage', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  userId: DataTypes.STRING,
+  packageId: DataTypes.STRING,
+  activatedAt: DataTypes.DATE,
+  expiresAt: DataTypes.DATE,
+  lastClaimedAt: DataTypes.DATE
+})
+
 const BlockedIP = sequelize.define('BlockedIP', {
   ip: { type: DataTypes.STRING, primaryKey: true },
   reason: DataTypes.STRING,
@@ -87,7 +97,11 @@ const Task = sequelize.define('Task', {
 // relations
 User.hasMany(Transaction, { foreignKey: 'userId' })
 User.hasMany(Deposit, { foreignKey: 'userId' })
+User.hasMany(UserPackage, { foreignKey: 'userId' })
 Deposit.belongsTo(User, { foreignKey: 'userId' })
+UserPackage.belongsTo(User, { foreignKey: 'userId' })
+UserPackage.belongsTo(Package, { foreignKey: 'packageId' })
+Package.hasMany(UserPackage, { foreignKey: 'packageId' })
 
 // Exported models will include BlockedIP
 
@@ -150,4 +164,4 @@ async function seed(){
 
 
 
-module.exports = { sequelize, models: { User, Package, Transaction, Deposit, Task, BlockedIP, WhitelistedIP }, seed }
+module.exports = { sequelize, models: { User, Package, Transaction, Deposit, UserPackage, Task, BlockedIP, WhitelistedIP }, seed }
