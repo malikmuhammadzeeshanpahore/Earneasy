@@ -172,6 +172,7 @@ export default function Admin(){
   const [globalGrantMessage, setGlobalGrantMessage] = useState('')
   const [selectedPackageForEdit, setSelectedPackageForEdit] = useState(null)
   const [packageDailyClaim, setPackageDailyClaim] = useState('')
+  const [geoInfo, setGeoInfo] = useState(null)
 
   async function adminLinkReferralAction(){
     if(!linkReferredByEmail || !linkRefereeEmail){ toast.show('Enter both emails', 'info'); return }
@@ -344,7 +345,7 @@ export default function Admin(){
                 <div key={u.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <div className="small muted">{u.email} — {u.name} — {u.role} — Active: {String(u.isActive)}</div>
                   <div style={{display:'flex',gap:8}}>
-                    <button className="btn" onClick={async ()=>{ try{ const d = await api.adminGetUser(u.id); if(d && d.user){ setUserDetails(d) } }catch(e){ console.error('Get user details failed', e) } }}>Details</button>
+                    <button className="btn" onClick={async ()=>{ try{ const d = await api.adminGetUser(u.id); if(d && d.user){ setUserDetails(d); setGeoInfo(null); if(d.user && d.user.signupIp){ try{ const res = await fetch('https://ipapi.co/'+encodeURIComponent(d.user.signupIp) + '/json/'); const data = await res.json(); setGeoInfo(data) }catch(err){ /* ignore geo errors */ } } } }catch(e){ console.error('Get user details failed', e) } }}>Details</button>
                   </div>
                 </div>
               ))}
@@ -401,14 +402,30 @@ export default function Admin(){
               </div>
 
               <div style={{marginTop:8}}>
-                <h5>Login Events</h5>
+                <h5>IP & Geolocation</h5>
+                <div className="small muted">Email: {userDetails.user.email} — Phone: {userDetails.user.phone || '—'}</div>
+                <div className="small muted">Signup IP: {userDetails.user.signupIp || '—'}</div>
+                <div style={{marginTop:6,display:'flex',alignItems:'center',gap:8}}>
+                  <button className="btn ghost" onClick={async ()=>{
+                    const ip = userDetails.user.signupIp
+                    if(!ip){ toast.show('No signup IP available', 'info'); return }
+                    try{
+                      const res = await fetch('https://ipapi.co/'+encodeURIComponent(ip) + '/json/')
+                      const data = await res.json()
+                      setGeoInfo(data)
+                    }catch(e){ console.error('Geo lookup failed', e); toast.show('Geo lookup failed', 'error') }
+                  }}>Lookup geo for signup IP</button>
+                  <div className="small muted">{geoInfo ? `${geoInfo.country_name || ''}${geoInfo.region ? ' / '+geoInfo.region : ''}${geoInfo.city ? ' / '+geoInfo.city : ''}` : '(no geo data yet)'}</div>
+                </div>
+
+                <h5 style={{marginTop:10}}>Recent Login Events</h5>
                 {userDetails.loginEvents && userDetails.loginEvents.length>0 ? (
                   <div style={{display:'flex',flexDirection:'column',gap:6}}>
                     {userDetails.loginEvents.map(ev=> (
                       <div key={ev.id} className="small muted">{ev.createdAt} — IP: {ev.ip || '—'}{ev.geo && ev.geo.country ? ` — ${ev.geo.country}${ev.geo.region ? ' / '+ev.geo.region : ''}${ev.geo.city ? ' / '+ev.geo.city : ''}` : ''}{ev.userAgent ? ` — UA: ${ev.userAgent.substring(0,80)}${ev.userAgent.length>80 ? '...' : ''}` : ''}</div>
                     ))}
                   </div>
-                ) : <div className="small muted">No login events</div>}
+                ) : <div className="small muted">No login events (showing signup IP above)</div>}
               </div>
               <div style={{marginTop:8}}>
                 <h5>Admin Actions</h5>
