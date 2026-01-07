@@ -163,6 +163,46 @@ router.post('/reconcile-purchases', allowAdminOrSecret(async (req,res)=>{
   }catch(e){ console.error('Reconcile operation failed', e); res.status(500).json({ error: 'server' }) }
 }))
 
+// Admin: toggle lock state on a package (body: { locked: true|false })
+router.post('/packages/:id/lock', allowAdminOrSecret(async (req,res)=>{
+  try{
+    const id = req.params.id
+    const { locked } = req.body || {}
+    if(typeof locked === 'undefined') return res.status(400).json({ error: 'Missing locked value' })
+    const pkg = await models.Package.findByPk(id)
+    if(!pkg) return res.status(404).json({ error: 'Package not found' })
+    pkg.locked = !!locked
+    await pkg.save()
+    return res.json({ ok:true, package: pkg })
+  }catch(e){ console.error('Toggle package lock failed', e); res.status(500).json({ error: 'server' }) }
+}))
+
+// Admin: update package fields (dailyClaim, price, locked)
+router.post('/packages/:id/update', allowAdminOrSecret(async (req,res)=>{
+  try{
+    const id = req.params.id
+    const { dailyClaim, price, locked } = req.body || {}
+    const pkg = await models.Package.findByPk(id)
+    if(!pkg) return res.status(404).json({ error: 'Package not found' })
+    if(typeof dailyClaim !== 'undefined') pkg.dailyClaim = Number(dailyClaim)
+    if(typeof price !== 'undefined') pkg.price = Number(price)
+    if(typeof locked !== 'undefined') pkg.locked = !!locked
+    await pkg.save()
+    return res.json({ ok:true, package: pkg })
+  }catch(e){ console.error('Update package failed', e); res.status(500).json({ error: 'server' }) }
+}))
+
+// Admin: reset lastClaimedAt for all UserPackages for a user (body: none)
+router.post('/users/:id/reset-package-claims', allowAdminOrSecret(async (req,res)=>{
+  try{
+    const id = req.params.id
+    const ups = await models.UserPackage.findAll({ where: { userId: id } })
+    let updated = 0
+    for(const up of ups){ up.lastClaimedAt = null; await up.save(); updated++ }
+    return res.json({ ok:true, updated })
+  }catch(e){ console.error('Reset package claims failed', e); res.status(500).json({ error: 'server' }) }
+}))
+
 // approve withdraw
 router.post('/withdraws/:id/approve', allowAdminOrSecret(async (req,res)=>{
   const id = req.params.id
@@ -233,6 +273,10 @@ router.post('/users/:id/activate-package', allowAdminOrSecret(async (req,res)=>{
   try{
     await sequelize.transaction(async (tx)=>{
       await models.UserPackage.create({ id: upId, userId: user.id, packageId: pkg.id, activatedAt, expiresAt }, { transaction: tx })
+      // touch user's updatedAt so clients reload latest data
+      user.updatedAt = new Date()
+      await user.save({ transaction: tx })
+
       if(charge === 'wallet'){
         if((user.wallet || 0) < pkg.price) throw new Error('insufficient_funds')
         user.wallet = (user.wallet || 0) - pkg.price
@@ -243,7 +287,7 @@ router.post('/users/:id/activate-package', allowAdminOrSecret(async (req,res)=>{
           const levels = [0.10,0.05,0.01]
           let refId = user.referredBy
           for(let lvl=0; lvl<levels.length && refId; lvl++){
-            const refUser = await models.User.findByPk(refId)
+            const refUser = await models.User.findByPk(refId, { transaction: tx })
             if(!refUser){ refId = null; break }
             const commission = Math.round((pkg.price * levels[lvl]) * 100) / 100
             if(commission > 0){
@@ -313,6 +357,42 @@ router.post('/reconcile-referral-bonuses', allowAdminOrSecret(async (req,res)=>{
     }
     res.json({ ok:true, created, skipped, errors, dryRun: !!dryRun })
   }catch(e){ console.error('reconcile-referral-bonuses failed', e); res.status(500).json({ error: 'server' }) }
+}))
+
+// Admin: manually grant 10% referral bonus for a user's investment
+// Body: { email, amount, note, idempotencyKey }
+router.post('/manual-referral-bonus', allowAdminOrSecret(async (req,res)=>{
+  try{
+    const { email, amount, note, idempotencyKey } = req.body || {}
+    if(!email) return res.status(400).json({ error: 'Missing email' })
+    if(!amount || isNaN(Number(amount)) || Number(amount) <= 0) return res.status(400).json({ error: 'Invalid amount' })
+    const user = await models.User.findOne({ where: { email } })
+    if(!user) return res.status(404).json({ error: 'User not found' })
+    if(!user.referredBy) return res.status(400).json({ error: 'user_has_no_referrer' })
+    const refUser = await models.User.findByPk(user.referredBy)
+    if(!refUser) return res.status(404).json({ error: 'Referrer not found' })
+    const rawAmount = Number(amount)
+    const bonus = Math.round((rawAmount * 0.10) * 100) / 100
+    if(bonus <= 0) return res.status(400).json({ error: 'Calculated bonus is zero' })
+
+    // idempotency: if idempotencyKey provided, skip if a matching tx exists
+    if(idempotencyKey){
+      const exists = await models.Transaction.findOne({ where: { type: 'referral', userId: refUser.id }, order:[['createdAt','DESC']] })
+      if(exists && exists.meta && exists.meta.idempotencyKey === idempotencyKey){
+        return res.json({ ok:true, skipped:true, message: 'Already applied' })
+      }
+    }
+
+    // credit and create transaction
+    refUser.wallet = (refUser.wallet || 0) + bonus
+    await refUser.save()
+    // touch updatedAt so client devices picking up user data will see a change
+    await models.User.update({ updatedAt: new Date() }, { where: { id: refUser.id } })
+    const tId = 't'+Date.now()+Math.floor(Math.random()*1000)
+    await models.Transaction.create({ id: tId, userId: refUser.id, type:'referral', amount: bonus, status: 'completed', meta: { manual: true, sourceEmail: user.email, sourceAmount: rawAmount, note: note || null, idempotencyKey: idempotencyKey || null } })
+
+    res.json({ ok:true, bonus, refUser: { id: refUser.id, email: refUser.email, wallet: refUser.wallet } })
+  }catch(e){ console.error('manual-referral-bonus failed', e); res.status(500).json({ error: 'server' }) }
 }))
 
 module.exports = router

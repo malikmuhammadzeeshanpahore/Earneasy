@@ -213,6 +213,21 @@ export async function adminReconcilePurchases(){
   return res.json()
 }
 
+export async function adminManualReferralBonus(payload){
+  const res = await fetch(BASE + `/admin/manual-referral-bonus`, { method:'POST', headers: { 'Content-Type':'application/json', ...adminHeaders() }, body: JSON.stringify(payload) })
+  return res.json()
+}
+
+export async function adminUpdatePackage(id,payload){
+  const res = await fetch(BASE + `/admin/packages/${encodeURIComponent(id)}/update`, { method:'POST', headers: { 'Content-Type':'application/json', ...adminHeaders() }, body: JSON.stringify(payload) })
+  return res.json()
+}
+
+export async function adminResetPackageClaims(userId){
+  const res = await fetch(BASE + `/admin/users/${encodeURIComponent(userId)}/reset-package-claims`, { method:'POST', headers: { ...adminHeaders() } })
+  return res.json()
+}
+
 export async function adminApproveWithdraw(id){
   const res = await fetch(BASE + `/admin/withdraws/${id}/approve`, { method:'POST', headers: { ...adminHeaders() } })
   return res.json()
@@ -256,7 +271,7 @@ export default {
   adminGetWhitelist, adminAddWhitelist, adminRemoveWhitelist,
   adminGetWithdraws, adminMarkWithdrawSent, adminConfirmWithdraw,
   adminApproveWithdraw, adminRejectWithdraw,
-  adminGetUser, adminActivatePackage, adminLinkReferral, adminReconcileReferralBonuses, adminReconcilePurchases,
+  adminGetUser, adminActivatePackage, adminLinkReferral, adminReconcileReferralBonuses, adminReconcilePurchases, adminManualReferralBonus,
   // secrets & auth
   assetUrl,
   setAdminSecret, setToken

@@ -134,6 +134,41 @@ export default function Admin(){
     }catch(e){ console.error('Admin activate failed', e); toast.show('Server error', 'error') }
   }
 
+  async function grantManualBonusForUser(email){
+    if(!email) { toast.show('Missing user email', 'info'); return }
+    if(!manualBonusAmount || isNaN(Number(manualBonusAmount)) || Number(manualBonusAmount) <= 0){ toast.show('Enter valid amount', 'info'); return }
+    try{
+      const r = await api.adminManualReferralBonus({ email, amount: manualBonusAmount, note: manualBonusNote, idempotencyKey: 'manual:'+email+':'+Date.now() })
+      if(r && r.ok){
+        if(r.skipped){ toast.show('Already applied, skipped', 'info') }
+        else toast.show(`Granted Rs ${r.bonus} to referrer`, 'success')
+        // refresh user data
+        const u = await api.adminGetUser(userDetails.user.id); if(u && u.user) setUserDetails(u)
+      }else if(r && r.error) toast.show(r.error, 'error')
+      else toast.show('Grant failed', 'error')
+    }catch(e){ console.error('Grant manual bonus failed', e); toast.show('Server error', 'error') }
+  }
+
+  async function grantManualBonusGlobal(){
+    if(!manualTargetEmail){ toast.show('Enter target user email', 'info'); return }
+    if(!manualTargetAmount || isNaN(Number(manualTargetAmount)) || Number(manualTargetAmount) <= 0){ toast.show('Enter valid amount', 'info'); return }
+    try{
+      const r = await api.adminManualReferralBonus({ email: manualTargetEmail, amount: manualTargetAmount, note: null, idempotencyKey: 'manual:'+manualTargetEmail+':'+Date.now() })
+      if(r && r.ok){
+        if(r.skipped){ toast.show('Already applied, skipped', 'info'); setGlobalGrantMessage('Already applied') }
+        else { toast.show(`Granted Rs ${r.bonus} to referrer ${r.refUser.email}`, 'success'); setGlobalGrantMessage(`Granted Rs ${r.bonus} to ${r.refUser.email}`) }
+        const uu = await api.adminGetUsers(); if(uu && uu.users) setUsers(uu.users)
+      }else if(r && r.error){ toast.show(r.error, 'error'); setGlobalGrantMessage(r.error) }
+      else { toast.show('Grant failed', 'error'); setGlobalGrantMessage('Grant failed') }
+    }catch(e){ console.error('Global grant failed', e); toast.show('Server error', 'error'); setGlobalGrantMessage('Server error') }
+  }
+
+  const [manualTargetEmail, setManualTargetEmail] = useState('')
+  const [manualTargetAmount, setManualTargetAmount] = useState('')
+  const [globalGrantMessage, setGlobalGrantMessage] = useState('')
+  const [selectedPackageForEdit, setSelectedPackageForEdit] = useState(null)
+  const [packageDailyClaim, setPackageDailyClaim] = useState('')
+
   async function adminLinkReferralAction(){
     if(!linkReferredByEmail || !linkRefereeEmail){ toast.show('Enter both emails', 'info'); return }
     try{
@@ -147,6 +182,9 @@ export default function Admin(){
       else toast.show('Failed to link', 'error')
     }catch(e){ console.error('Link referral failed', e); toast.show('Server error', 'error') }
   }
+
+  const [manualBonusAmount, setManualBonusAmount] = useState('')
+  const [manualBonusNote, setManualBonusNote] = useState('')
 
   async function runReconcile(userId, dryRun){
     try{
@@ -199,6 +237,22 @@ export default function Admin(){
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <button className="btn ghost" onClick={()=>runGlobalReconcile(true)} style={{marginRight:8}}>Global reconcile (dry-run)</button>
           <button className="btn" onClick={()=>{ if(!confirm('Run global reconcile? This will credit wallets when applied. Are you sure?')) return; runGlobalReconcile(false) }}>Global reconcile (apply)</button>
+        </div>
+
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <input placeholder="target user email" value={manualTargetEmail} onChange={e=>setManualTargetEmail(e.target.value)} style={{width:220}} />
+          <input placeholder="investment amount" value={manualTargetAmount} onChange={e=>setManualTargetAmount(e.target.value)} style={{width:180}} />
+          <button className="btn" onClick={async ()=>{ try{ await grantManualBonusGlobal() }catch(e){ console.error(e) } }}>Grant 10% bonus (global)</button>
+          <div className="small muted">{globalGrantMessage}</div>
+        </div>
+
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <select value={selectedPackageForEdit || ''} onChange={e=>setSelectedPackageForEdit(e.target.value)} style={{minWidth:220}}>
+            <option value="">-- select package to edit --</option>
+            {packages.map(p=> <option key={p.id} value={p.id}>{p.name} — Rs {p.price}</option>)}
+          </select>
+          <input placeholder="daily claim" value={packageDailyClaim || ''} onChange={e=>setPackageDailyClaim(e.target.value)} style={{width:140}} />
+          <button className="btn" onClick={async ()=>{ if(!selectedPackageForEdit){ toast.show('Choose package', 'info'); return } try{ const r = await api.adminUpdatePackage(selectedPackageForEdit, { dailyClaim: Number(packageDailyClaim) }); if(r && r.ok){ toast.show('Package updated', 'success'); const pList = await api.getPackages(); if(pList && pList.packages) setPackages(pList.packages) } }catch(e){ console.error(e); toast.show('Update failed','error') } }}>Update package</button>
         </div>
       </div>
       <div className="grid">
@@ -355,6 +409,7 @@ export default function Admin(){
                       <option value="external">Mark as external payment</option>
                     </select>
                     <button className="btn" onClick={async ()=>{ try{ await adminActivatePackageForUser(userDetails.user.id) }catch(e){ console.error(e) } }}>Activate</button>
+                    <button className="btn ghost" onClick={async ()=>{ if(!confirm('Reset claims for this user?')) return; try{ const r = await api.adminResetPackageClaims(userDetails.user.id); if(r && r.ok) { toast.show('Reset done: ' + r.updated, 'success'); const d = await api.adminGetUser(userDetails.user.id); if(d && d.user) setUserDetails(d) } }catch(e){ console.error(e); toast.show('Reset failed','error') } }}>Reset claims</button>
                   </div>
                   <div>
                     <div className="small muted">Link referral (referredBy → referee)</div>
@@ -362,10 +417,24 @@ export default function Admin(){
                     <input placeholder="referee email" value={linkRefereeEmail} onChange={e=>setLinkRefereeEmail(e.target.value)} style={{width:220,marginRight:8}} />
                     <button className="btn ghost" onClick={async ()=>{ try{ await adminLinkReferralAction() }catch(e){ console.error(e) } }}>Link</button>
                   </div>
+
+                  <div>
+                    <div className="small muted">Grant manual referral bonus (admin: 10%)</div>
+                    <input placeholder="target user email" value={manualTargetEmail || (userDetails && userDetails.user && userDetails.user.email) || ''} onChange={e=>setManualTargetEmail(e.target.value)} style={{width:220,marginRight:8}} />
+                    <input placeholder="investment amount" value={manualTargetAmount || ''} onChange={e=>setManualTargetAmount(e.target.value)} style={{width:180,marginRight:8}} />
+                    <button className="btn" onClick={async ()=>{ try{ await grantManualBonusGlobal() }catch(e){ console.error(e) } }}>Grant 10% bonus</button>
+                  </div>
                   <div>
                     <div className="small muted">Reconcile referral bonuses for this user</div>
                     <button className="btn ghost" onClick={async ()=>{ try{ await runReconcile(userDetails.user.id, true) }catch(e){ console.error(e) } }}>Dry run</button>
                     <button className="btn" onClick={async ()=>{ if(!confirm('Apply reconcile for this user?')) return; try{ await runReconcile(userDetails.user.id, false) }catch(e){ console.error(e) } }}>Apply</button>
+                  </div>
+
+                  <div>
+                    <div className="small muted">Manual referral bonus (10% of provided investment) for this user's referrer</div>
+                    <input placeholder="investment amount (PKR)" value={manualBonusAmount || ''} onChange={e=>setManualBonusAmount(e.target.value)} style={{width:180,marginRight:8}} />
+                    <input placeholder="note (optional)" value={manualBonusNote || ''} onChange={e=>setManualBonusNote(e.target.value)} style={{width:220,marginRight:8}} />
+                    <button className="btn" onClick={async ()=>{ try{ await grantManualBonusForUser(userDetails.user.email) }catch(e){ console.error(e) } }}>Grant 10% bonus to referrer</button>
                   </div>
                 </div>
               </div>

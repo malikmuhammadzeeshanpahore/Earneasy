@@ -118,8 +118,8 @@ async function seed(){
     { id:'p4000', name:'Gold', price:4000, duration:90, dailyClaim:720 },
     { id:'p8000', name:'Platinum', price:8000, duration:90, dailyClaim:1450 },
     { id:'p12000', name:'Diamond', price:12000, duration:90, dailyClaim:2200 },
-    { id:'p20000', name:'Elite', price:20000, duration:90, dailyClaim:0, locked: true },
-    { id:'p40000', name:'Pro', price:40000, duration:90, dailyClaim:0, locked: true },
+    { id:'p20000', name:'Elite', price:20000, duration:90, dailyClaim:3600, locked: false },
+    { id:'p40000', name:'Pro', price:40000, duration:90, dailyClaim:7200, locked: false },
     { id:'p80000', name:'Ultra', price:80000, duration:90, dailyClaim:0, locked: true },
     { id:'p100000', name:'Mega', price:100000, duration:90, dailyClaim:0, locked: true }
   ]
