@@ -22,6 +22,10 @@ export default function Dashboard(){
       }
     }
     load()
+
+    function onUserUpdate(e){ if(e && e.detail) setUser(e.detail) }
+    window.addEventListener('userUpdate', onUserUpdate)
+    return ()=> window.removeEventListener('userUpdate', onUserUpdate)
   },[])
 
   const [pkgInfo, setPkgInfo] = useState(null)

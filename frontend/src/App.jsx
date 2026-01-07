@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, Link } from 'react-router-dom'
 import Landing from './pages/Landing'
 import Auth from './pages/Auth'
@@ -17,8 +17,10 @@ import JoinChannelModal from './components/JoinChannelModal'
 import ErrorBoundary from './components/ErrorBoundary'
 
 import { ToastProvider } from './components/Toast'
-
+import { startUserSync, stopUserSync } from './services/userSync'
 export default function App(){
+  useEffect(()=>{ startUserSync(); return ()=> stopUserSync() }, [])
+
   return (
     <ToastProvider>
       <div>

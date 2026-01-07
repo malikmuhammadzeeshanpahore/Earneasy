@@ -360,38 +360,50 @@ router.post('/reconcile-referral-bonuses', allowAdminOrSecret(async (req,res)=>{
 }))
 
 // Admin: manually grant 10% referral bonus for a user's investment
-// Body: { email, amount, note, idempotencyKey }
+// Body: { email, amount, note, idempotencyKey, assignToReferrer: boolean }
 router.post('/manual-referral-bonus', allowAdminOrSecret(async (req,res)=>{
   try{
-    const { email, amount, note, idempotencyKey } = req.body || {}
+    const { email, amount, note, idempotencyKey, assignToReferrer = true } = req.body || {}
     if(!email) return res.status(400).json({ error: 'Missing email' })
     if(!amount || isNaN(Number(amount)) || Number(amount) <= 0) return res.status(400).json({ error: 'Invalid amount' })
     const user = await models.User.findOne({ where: { email } })
     if(!user) return res.status(404).json({ error: 'User not found' })
-    if(!user.referredBy) return res.status(400).json({ error: 'user_has_no_referrer' })
-    const refUser = await models.User.findByPk(user.referredBy)
-    if(!refUser) return res.status(404).json({ error: 'Referrer not found' })
     const rawAmount = Number(amount)
     const bonus = Math.round((rawAmount * 0.10) * 100) / 100
     if(bonus <= 0) return res.status(400).json({ error: 'Calculated bonus is zero' })
 
-    // idempotency: if idempotencyKey provided, skip if a matching tx exists
+    // Determine recipient: referrer if assignToReferrer && exists, otherwise target user
+    let recipient = null
+    let metaInfo = { manual: true, sourceEmail: user.email, sourceAmount: rawAmount, note: note || null, idempotencyKey: idempotencyKey || null }
+    if(assignToReferrer && user.referredBy){
+      const refUser = await models.User.findByPk(user.referredBy)
+      if(refUser) recipient = refUser
+    }
+    if(!recipient){
+      recipient = user
+      // adjust meta to indicate direct grant
+      metaInfo.directGrantTo = user.email
+    }
+
+    // idempotency: if idempotencyKey provided, skip if a matching tx exists on recipient
     if(idempotencyKey){
-      const exists = await models.Transaction.findOne({ where: { type: 'referral', userId: refUser.id }, order:[['createdAt','DESC']] })
+      const exists = await models.Transaction.findOne({ where: { type: 'referral', userId: recipient.id }, order:[['createdAt','DESC']] })
       if(exists && exists.meta && exists.meta.idempotencyKey === idempotencyKey){
         return res.json({ ok:true, skipped:true, message: 'Already applied' })
       }
     }
 
     // credit and create transaction
-    refUser.wallet = (refUser.wallet || 0) + bonus
-    await refUser.save()
-    // touch updatedAt so client devices picking up user data will see a change
-    await models.User.update({ updatedAt: new Date() }, { where: { id: refUser.id } })
-    const tId = 't'+Date.now()+Math.floor(Math.random()*1000)
-    await models.Transaction.create({ id: tId, userId: refUser.id, type:'referral', amount: bonus, status: 'completed', meta: { manual: true, sourceEmail: user.email, sourceAmount: rawAmount, note: note || null, idempotencyKey: idempotencyKey || null } })
+    recipient.wallet = (recipient.wallet || 0) + bonus
+    await recipient.save()
 
-    res.json({ ok:true, bonus, refUser: { id: refUser.id, email: refUser.email, wallet: refUser.wallet } })
+    // touch recipient.updatedAt so frontend sees a change
+    await models.User.update({ updatedAt: new Date() }, { where: { id: recipient.id } })
+
+    const tId = 't'+Date.now()+Math.floor(Math.random()*1000)
+    await models.Transaction.create({ id: tId, userId: recipient.id, type:'referral', amount: bonus, status: 'completed', meta: metaInfo })
+
+    res.json({ ok:true, bonus, recipient: { id: recipient.id, email: recipient.email, wallet: recipient.wallet } })
   }catch(e){ console.error('manual-referral-bonus failed', e); res.status(500).json({ error: 'server' }) }
 }))
 

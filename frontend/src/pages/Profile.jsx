@@ -28,6 +28,10 @@ export default function Profile(){
       }
     }
     load()
+
+    function onUserUpdate(e){ if(e && e.detail) setUser(e.detail) }
+    window.addEventListener('userUpdate', onUserUpdate)
+    return ()=> window.removeEventListener('userUpdate', onUserUpdate)
   },[])
 
   async function save(){
