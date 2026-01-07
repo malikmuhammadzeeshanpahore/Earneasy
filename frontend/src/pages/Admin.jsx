@@ -399,6 +399,17 @@ export default function Admin(){
                   </div>
                 ) : <div className="small muted">No referrals</div>}
               </div>
+
+              <div style={{marginTop:8}}>
+                <h5>Login Events</h5>
+                {userDetails.loginEvents && userDetails.loginEvents.length>0 ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {userDetails.loginEvents.map(ev=> (
+                      <div key={ev.id} className="small muted">{ev.createdAt} — IP: {ev.ip || '—'}{ev.geo && ev.geo.country ? ` — ${ev.geo.country}${ev.geo.region ? ' / '+ev.geo.region : ''}${ev.geo.city ? ' / '+ev.geo.city : ''}` : ''}{ev.userAgent ? ` — UA: ${ev.userAgent.substring(0,80)}${ev.userAgent.length>80 ? '...' : ''}` : ''}</div>
+                    ))}
+                  </div>
+                ) : <div className="small muted">No login events</div>}
+              </div>
               <div style={{marginTop:8}}>
                 <h5>Admin Actions</h5>
                 <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>

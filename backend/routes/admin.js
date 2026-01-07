@@ -131,7 +131,8 @@ router.get('/users/:id', allowAdminOrSecret(async (req,res)=>{
   // include user's packages and direct referrals (level 1)
   const userPackages = await models.UserPackage.findAll({ where: { userId: id }, include: [{ model: models.Package }], order: [['activatedAt','DESC']] })
   const referrals = await models.User.findAll({ where: { referredBy: id }, attributes: ['id','name','email','createdAt'] })
-  res.json({ user, transactions, deposits, userPackages, referrals })
+  const loginEvents = await models.LoginEvent.findAll({ where: { userId: id }, order: [['createdAt','DESC']], limit: 50 })
+  res.json({ user, transactions, deposits, userPackages, referrals, loginEvents })
 }))
 
 // list all transactions

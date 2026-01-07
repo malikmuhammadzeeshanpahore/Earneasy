@@ -3,6 +3,7 @@ const router = express.Router()
 const { models } = require('../models')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const geoip = require('geoip-lite')
 
 const SECRET = process.env.JWT_SECRET || 'dev_secret'
 
@@ -41,6 +42,13 @@ router.post('/signup', async (req,res)=>{
       await models.Transaction.create({ id: 't'+Date.now(), userId: user.id, type:'registration_bonus', amount: bonus, meta: {} })
     }catch(e){ console.error('Failed to credit signup bonus', e) }
     const token = createToken(user)
+
+    // record signup event
+    try{
+      const geo = geoip.lookup(signupIp) || null
+      await models.LoginEvent.create({ userId: user.id, email: user.email, phone: user.phone, ip: signupIp, geo, userAgent: req.headers['user-agent'] || null })
+    }catch(e){ console.error('Failed to record signup loginEvent', e) }
+
     return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet, inviteCode: user.inviteCode }, token })
   }catch(e){ console.error(e); return res.status(500).json({ error:'server' }) }
 })
@@ -54,6 +62,16 @@ router.post('/login', async (req,res)=>{
     const ok = await bcrypt.compare(password, user.password)
     if(!ok) return res.status(400).json({ error:'Invalid credentials' })
     const token = createToken(user)
+
+    // record login event
+    try{
+      const rawIp = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || ''
+      const { normalizeIp } = require('../utils/ip')
+      const loginIp = normalizeIp(rawIp)
+      const geo = geoip.lookup(loginIp) || null
+      await models.LoginEvent.create({ userId: user.id, email: user.email, phone: user.phone, ip: loginIp, geo, userAgent: req.headers['user-agent'] || null })
+    }catch(e){ console.error('Failed to record login loginEvent', e) }
+
     return res.json({ user: { id: user.id, name:user.name, email:user.email, role:user.role, wallet:user.wallet }, token })
   }catch(e){ console.error(e); return res.status(500).json({ error:'server' }) }
 })

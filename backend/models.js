@@ -94,10 +94,24 @@ const Task = sequelize.define('Task', {
   meta: DataTypes.JSON
 })
 
+// LoginEvent: track logins and signup events (ip, email, phone, geo, user agent)
+const LoginEvent = sequelize.define('LoginEvent', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  userId: DataTypes.STRING,
+  email: DataTypes.STRING,
+  phone: DataTypes.STRING,
+  ip: DataTypes.STRING,
+  geo: DataTypes.JSON,
+  userAgent: DataTypes.STRING
+})
+LoginEvent.addHook('beforeCreate', (le)=>{ if(!le.id) le.id = 'le'+Date.now()+Math.floor(Math.random()*1000) })
+
 // relations
 User.hasMany(Transaction, { foreignKey: 'userId' })
 User.hasMany(Deposit, { foreignKey: 'userId' })
 User.hasMany(UserPackage, { foreignKey: 'userId' })
+User.hasMany(LoginEvent, { foreignKey: 'userId' })
+LoginEvent.belongsTo(User, { foreignKey: 'userId' })
 Deposit.belongsTo(User, { foreignKey: 'userId' })
 UserPackage.belongsTo(User, { foreignKey: 'userId' })
 UserPackage.belongsTo(Package, { foreignKey: 'packageId' })
@@ -164,4 +178,4 @@ async function seed(){
 
 
 
-module.exports = { sequelize, models: { User, Package, Transaction, Deposit, UserPackage, Task, BlockedIP, WhitelistedIP }, seed }
+module.exports = { sequelize, models: { User, Package, Transaction, Deposit, UserPackage, Task, BlockedIP, WhitelistedIP, LoginEvent }, seed }
