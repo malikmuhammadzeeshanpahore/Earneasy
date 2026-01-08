@@ -46,10 +46,23 @@ router.post('/', async (req,res)=>{
     if(cols.includes('geo')) payload.geo = geo
     if(cols.includes('userAgent')) payload.userAgent = req.headers['user-agent'] || null
     if(cols.includes('type')) payload.type = type
-    if(cols.includes('meta')) payload.meta = meta || null
+
+    // attach meta (merge incoming meta with a header snapshot for debugging)
+    if(cols.includes('meta')){
+      payload.meta = Object.assign({}, meta || {})
+      payload.meta._headers = {
+        x_forwarded_for: req.headers['x-forwarded-for'] || null,
+        x_real_ip: req.headers['x-real-ip'] || null,
+        cf_connecting_ip: req.headers['cf-connecting-ip'] || null,
+        forwarded: req.headers['forwarded'] || null,
+        remote_addr: req.ip || (req.socket && req.socket.remoteAddress) || null
+      }
+    }
 
     try{
       await models.LoginEvent.create(payload)
+      // Log a helpful line when IP is missing so we can diagnose live
+      if(!payload.ip){ console.warn('Event saved without IP. header snapshot:', payload.meta && payload.meta._headers) }
       return res.json({ ok:true })
     }catch(e){
       // non-fatal: log and return accepted so production callers don't see 500 for analytics

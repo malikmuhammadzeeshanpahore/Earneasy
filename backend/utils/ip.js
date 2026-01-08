@@ -30,26 +30,39 @@ function pickPublicFromXFF(raw){
   return parts.length ? module.exports.normalizeIp(parts[0]) : ''
 }
 
-// extract client IP from request, honoring proxy headers (x-forwarded-for, cf-connecting-ip)
+// parse `Forwarded` header (RFC7239) and return first 'for=' value
+function parseForwardedHeader(raw){
+  if(!raw) return ''
+  // example: for=203.0.113.195;proto=https;by=203.0.113.43
+  const match = String(raw).match(/for=([^;,\s]+)/i)
+  return match ? module.exports.normalizeIp(match[1].replace(/"/g,'')) : ''
+}
+
+// extract client IP from request, honoring proxy headers (x-forwarded-for, cf-connecting-ip, x-real-ip, forwarded)
 module.exports.getClientIp = function(req){
   if(!req) return ''
-  const fwd = req.headers && req.headers['x-forwarded-for']
-  const cf = req.headers && (req.headers['cf-connecting-ip'] || req.headers['cf-connecting-ip']?.value)
+  const headers = req.headers || {}
+  const fwd = headers['x-forwarded-for']
+  const cf = headers['cf-connecting-ip'] || (headers['cf-connecting-ip'] && headers['cf-connecting-ip'].value)
+  const xreal = headers['x-real-ip']
+  const xclient = headers['x-client-ip'] || headers['x-cluster-client-ip']
+  const forwarded = headers['forwarded']
   const sock = req.socket && req.socket.remoteAddress
 
-  // Prefer explicit CF header
-  if(cf){
-    const cfn = module.exports.normalizeIp(cf)
-    if(cfn) return cfn
-  }
+  // 1) prefer Cloudflare header
+  if(cf){ const cfn = module.exports.normalizeIp(cf); if(cfn) return cfn }
 
-  // If X-Forwarded-For present, try to find the first public IP
-  if(fwd){
-    const pick = pickPublicFromXFF(fwd)
-    if(pick) return pick
-  }
+  // 2) prefer explicit x-real-ip / x-client-ip if present and valid
+  if(xreal){ const xr = module.exports.normalizeIp(xreal); if(xr) return xr }
+  if(xclient){ const xc = module.exports.normalizeIp(xclient); if(xc) return xc }
 
-  // fallback to req.ip (which respects trust proxy when set) or socket
+  // 3) X-Forwarded-For: pick first public IP or first entry
+  if(fwd){ const pick = pickPublicFromXFF(fwd); if(pick) return pick }
+
+  // 4) Forwarded header RFC7239
+  if(forwarded){ const pf = parseForwardedHeader(forwarded); if(pf) return pf }
+
+  // 5) fallback to req.ip (respects `trust proxy`), socket remote address
   const cand = req.ip || sock || (req.connection && req.connection.remoteAddress) || ''
   return module.exports.normalizeIp(cand)
 }
