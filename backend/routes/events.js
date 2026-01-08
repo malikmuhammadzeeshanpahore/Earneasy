@@ -32,10 +32,9 @@ async function getLoginEventColumns(){
 router.post('/', async (req,res)=>{
   try{
     const { type='pageview', userId, email, phone, meta } = req.body || {}
-    const raw = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || ''
-    const { normalizeIp } = require('../utils/ip')
-    const ip = normalizeIp(raw)
-    const geo = geoip.lookup(ip) || null
+    const { getClientIp } = require('../utils/ip')
+    const ip = getClientIp(req)
+    const geo = (ip ? geoip.lookup(ip) : null) || null
 
     // Build payload using only existing columns (helps when production DB schema is older)
     const cols = await getLoginEventColumns()
@@ -43,7 +42,7 @@ router.post('/', async (req,res)=>{
     if(cols.includes('userId')) payload.userId = userId || null
     if(cols.includes('email')) payload.email = email || null
     if(cols.includes('phone')) payload.phone = phone || null
-    if(cols.includes('ip')) payload.ip = ip
+    if(cols.includes('ip')) payload.ip = ip || null
     if(cols.includes('geo')) payload.geo = geo
     if(cols.includes('userAgent')) payload.userAgent = req.headers['user-agent'] || null
     if(cols.includes('type')) payload.type = type

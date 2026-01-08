@@ -11,6 +11,8 @@ const adminRoutes = require('./routes/admin')
 const eventsRoutes = require('./routes/events')
 // comment
 const app = express()
+// When running behind nginx or other proxies, trust proxy headers so req.ip reflects client IP
+app.set('trust proxy', true)
 app.use(cors())
 app.use(express.json())
 
