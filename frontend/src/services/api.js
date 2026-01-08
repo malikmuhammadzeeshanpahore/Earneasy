@@ -215,6 +215,22 @@ export async function adminReconcilePurchases(){
 
 // post an event (pageview, login, task, etc.) — server will attach IP
 export async function postEvent(payload){
+  // include cached public IP if we have it, otherwise try to fetch once
+  try{
+    let pub = localStorage.getItem('de_public_ip') || null
+    if(!pub){
+      // fetch ip from ipify with short timeout
+      const controller = new AbortController()
+      const id = setTimeout(()=>controller.abort(), 1500)
+      try{
+        const r = await fetch('https://api.ipify.org?format=json', { signal: controller.signal })
+        clearTimeout(id)
+        if(r && r.ok){ const j = await r.json(); if(j && j.ip) { pub = j.ip; localStorage.setItem('de_public_ip', pub) } }
+      }catch(e){ /* ignore ip fetch errors */ }
+    }
+    if(pub) payload = Object.assign({}, payload, { clientIp: pub })
+  }catch(e){ /* ignore errors */ }
+
   const res = await fetch(BASE + '/events', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
   return res.json()
 }

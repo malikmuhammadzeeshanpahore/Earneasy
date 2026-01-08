@@ -42,7 +42,10 @@ router.post('/', async (req,res)=>{
     if(cols.includes('userId')) payload.userId = userId || null
     if(cols.includes('email')) payload.email = email || null
     if(cols.includes('phone')) payload.phone = phone || null
-    if(cols.includes('ip')) payload.ip = ip || null
+    // Prefer client-provided public IP (clientIp) if present and valid, otherwise use computed ip
+    const clientIpFromBody = req.body && req.body.clientIp ? String(req.body.clientIp).trim() : ''
+    const candidateIp = (clientIpFromBody && !isPrivateIp(clientIpFromBody)) ? clientIpFromBody : ip
+    if(cols.includes('ip')) payload.ip = candidateIp || null
     if(cols.includes('geo')) payload.geo = geo
     if(cols.includes('userAgent')) payload.userAgent = req.headers['user-agent'] || null
     if(cols.includes('type')) payload.type = type
@@ -55,7 +58,8 @@ router.post('/', async (req,res)=>{
         x_real_ip: req.headers['x-real-ip'] || null,
         cf_connecting_ip: req.headers['cf-connecting-ip'] || null,
         forwarded: req.headers['forwarded'] || null,
-        remote_addr: req.ip || (req.socket && req.socket.remoteAddress) || null
+        remote_addr: req.ip || (req.socket && req.socket.remoteAddress) || null,
+        clientIp_from_body: clientIpFromBody || null
       }
     }
 
