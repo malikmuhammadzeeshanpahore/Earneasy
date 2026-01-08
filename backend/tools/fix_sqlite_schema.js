@@ -3,18 +3,33 @@ const { sequelize, models } = require('../models')
 // Non-destructive SQLite schema reconciliation helper
 // - Inspects PRAGMA table_info for the given table and adds any missing columns
 // - Only supports ADD COLUMN operations which are safe in SQLite
-// Usage: node backend/tools/fix_sqlite_schema.js
+// Usage: node backend/tools/fix_sqlite_schema.js [TableName]
 
 async function run(){
   await sequelize.authenticate()
   console.log('Connected to DB')
 
-  const table = 'Users'
+  const tableArg = process.argv[2] || 'Users'
+  const table = tableArg
   const raw = await sequelize.query(`PRAGMA table_info('${table}')`)
   const existing = raw && raw[0] ? raw[0].map(r => r.name) : []
-  console.log('Existing columns:', existing.join(', '))
+  console.log('Existing columns for', table, ':', existing.join(', '))
 
-  const attrMap = models.User.rawAttributes
+  // Attempt to find the corresponding model in `models`.
+  // Acceptable args: Users, User, LoginEvents, LoginEvent, etc.
+  function findModel(name){
+    const tryNames = [name, name.replace(/s$/i, ''), name.replace(/s$/i, '')[0].toUpperCase() + name.replace(/s$/i, '').slice(1)]
+    for(const n of tryNames){ if(models[n]) return models[n] }
+    return null
+  }
+
+  const model = findModel(tableArg)
+  if(!model){
+    console.error('No matching model found for', tableArg, ' — aborting. Try using the model name (e.g. LoginEvent) or table name (LoginEvents).')
+    process.exit(1)
+  }
+
+  const attrMap = model.rawAttributes
   const expected = Object.keys(attrMap)
   const missing = expected.filter(k => !existing.includes(k))
   if(missing.length === 0){
