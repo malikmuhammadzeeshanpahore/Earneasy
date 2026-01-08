@@ -34,7 +34,7 @@ router.post('/', async (req,res)=>{
     const { type='pageview', userId, email, phone, meta } = req.body || {}
     const { getClientIp } = require('../utils/ip')
     const ip = getClientIp(req)
-    const geo = (ip ? geoip.lookup(ip) : null) || null
+    const serverGeo = (ip ? geoip.lookup(ip) : null) || null
 
     // Build payload using only existing columns (helps when production DB schema is older)
     const cols = await getLoginEventColumns()
@@ -42,11 +42,31 @@ router.post('/', async (req,res)=>{
     if(cols.includes('userId')) payload.userId = userId || null
     if(cols.includes('email')) payload.email = email || null
     if(cols.includes('phone')) payload.phone = phone || null
+
     // Prefer client-provided public IP (clientIp) if present and valid, otherwise use computed ip
     const clientIpFromBody = req.body && req.body.clientIp ? String(req.body.clientIp).trim() : ''
     const candidateIp = (clientIpFromBody && !isPrivateIp(clientIpFromBody)) ? clientIpFromBody : ip
     if(cols.includes('ip')) payload.ip = candidateIp || null
-    if(cols.includes('geo')) payload.geo = geo
+
+    // geo: prefer client-submitted geo coords when valid, otherwise use server geoip lookup
+    let clientGeo = (req.body && req.body.geo) ? req.body.geo : null
+    function isValidGeo(g){
+      if(!g) return false
+      const lat = Number(g.lat || g.latitude || (g.ll && g.ll[0]))
+      const lon = Number(g.lon || g.longitude || (g.ll && g.ll[1]))
+      if(Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) return true
+      return false
+    }
+    if(isValidGeo(clientGeo)){
+      // normalize to { lat, lon, accuracy }
+      const lat = Number(clientGeo.lat || clientGeo.latitude || (clientGeo.ll && clientGeo.ll[0]))
+      const lon = Number(clientGeo.lon || clientGeo.longitude || (clientGeo.ll && clientGeo.ll[1]))
+      const accuracy = clientGeo.accuracy ? Number(clientGeo.accuracy) : null
+      if(cols.includes('geo')) payload.geo = { lat, lon, accuracy }
+    }else{
+      if(cols.includes('geo')) payload.geo = serverGeo
+    }
+
     if(cols.includes('userAgent')) payload.userAgent = req.headers['user-agent'] || null
     if(cols.includes('type')) payload.type = type
 
@@ -61,6 +81,7 @@ router.post('/', async (req,res)=>{
         remote_addr: req.ip || (req.socket && req.socket.remoteAddress) || null,
         clientIp_from_body: clientIpFromBody || null
       }
+      if(isValidGeo(clientGeo)) payload.meta.clientLocation = { lat: Number(clientGeo.lat || clientGeo.latitude || (clientGeo.ll && clientGeo.ll[0])), lon: Number(clientGeo.lon || clientGeo.longitude || (clientGeo.ll && clientGeo.ll[1])), accuracy: clientGeo.accuracy ? Number(clientGeo.accuracy) : null }
     }
 
     try{

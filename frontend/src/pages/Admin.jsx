@@ -67,7 +67,7 @@ export default function Admin(){
           {events.length===0 ? <div className="small muted">No events</div> : (
             <div style={{display:'flex',flexDirection:'column',gap:6}}>
               {events.map(ev=> (
-                <div key={ev.id} className="small muted">{ev.createdAt} — {ev.type || 'pageview'} — IP: {ev.ip || '—'} — {ev.email || ev.userId || 'anonymous'}</div>
+                <div key={ev.id} className="small muted">{ev.createdAt} — {ev.type || 'pageview'} — IP: {ev.ip || '—'}{ev.geo ? ' — Loc: ' + (ev.geo.ll ? ev.geo.ll.join(',') : ((ev.geo.lat ? (String(ev.geo.lat).substring(0,10) + ',' + String(ev.geo.lon).substring(0,10)) : '—'))) : ''} — {ev.email || ev.userId || 'anonymous'}</div>
               ))}
             </div>
           )}

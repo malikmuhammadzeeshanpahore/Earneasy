@@ -15,6 +15,7 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 import JoinChannelModal from './components/JoinChannelModal'
 import ErrorBoundary from './components/ErrorBoundary'
+import LocationGate from './components/LocationGate'
 
 import { ToastProvider } from './components/Toast'
 import { startUserSync, stopUserSync } from './services/userSync'
@@ -32,6 +33,7 @@ export default function App(){
       <div>
         <Header />
         <JoinChannelModal />
+        <LocationGate />
         <main className="container">
           <ErrorBoundary>
           <Routes>
