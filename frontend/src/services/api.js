@@ -283,7 +283,9 @@ export default {
   adminGetWhitelist, adminAddWhitelist, adminRemoveWhitelist,
   adminGetWithdraws, adminMarkWithdrawSent, adminConfirmWithdraw,
   adminApproveWithdraw, adminRejectWithdraw,
-  adminGetUser, adminActivatePackage, adminLinkReferral, adminReconcileReferralBonuses, adminReconcilePurchases, adminManualReferralBonus,
+  adminGetUser, adminActivatePackage, adminLinkReferral, adminReconcileReferralBonuses, adminReconcilePurchases, adminManualReferralBonus, adminGetEvents,
+  // events & post
+  postEvent,
   // secrets & auth
   assetUrl,
   setAdminSecret, setToken
