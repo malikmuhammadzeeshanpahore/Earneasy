@@ -101,6 +101,8 @@ const LoginEvent = sequelize.define('LoginEvent', {
   email: DataTypes.STRING,
   phone: DataTypes.STRING,
   ip: DataTypes.STRING,
+  type: DataTypes.STRING,
+  meta: DataTypes.JSON,
   geo: DataTypes.JSON,
   userAgent: DataTypes.STRING
 })

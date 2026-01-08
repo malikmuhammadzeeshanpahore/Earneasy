@@ -33,6 +33,8 @@ export default function Tasks(){
       const r = await api.completeTask(task.id)
       if(r.error){ toast.show(r.error, 'error'); return }
       toast.show(`Task completed — +$${task.reward}`, 'success')
+      // record task completion event so IP and activity are logged
+      try{ await api.postEvent({ type: 'task', userId: user.id, email: user.email, meta: { taskId: task.id } }) }catch(e){ /* ignore */ }
       const me = await api.me()
       if(me.user) { localStorage.setItem('de_user', JSON.stringify(me.user)); setUser(me.user) }
     }catch(e){ toast.show('Server error', 'error') }

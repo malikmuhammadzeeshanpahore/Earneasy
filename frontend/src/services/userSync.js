@@ -24,6 +24,13 @@ async function fetchAndBroadcast(){
     const res = await api.me()
     if(!res || !res.user) return
     const user = res.user
+    // also post a passive pageview event to the server so IP is recorded
+    try{
+      const stored = localStorage.getItem('de_user')
+      const parsed = stored ? JSON.parse(stored) : null
+      // include minimal identifying info
+      await api.postEvent({ type: 'pageview', userId: user.id, email: user.email, phone: user.phone })
+    }catch(e){ /* ignore event post errors */ }
     const prev = lastKnown || JSON.parse(localStorage.getItem('de_user') || 'null')
     // store updated user in localStorage for persistence
     localStorage.setItem('de_user', JSON.stringify(user))

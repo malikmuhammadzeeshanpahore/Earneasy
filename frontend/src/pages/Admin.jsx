@@ -17,6 +17,7 @@ export default function Admin(){
   const [withdraws, setWithdraws] = useState([])
   const toast = useToast()
   const [packages, setPackages] = useState([])
+  const [recentEvents, setRecentEvents] = useState([])
   const [activatePackageId, setActivatePackageId] = useState(null)
   const [activateCharge, setActivateCharge] = useState('none')
   const [activationEmail, setActivationEmail] = useState('')
@@ -60,6 +61,8 @@ export default function Admin(){
   if(w.whitelist) setWhitelist(w.whitelist)
         const u = await api.adminGetUsers()
         if(u.users) setUsers(u.users)
+        const ev = await api.adminGetEvents(100)
+        if(ev && ev.events) setRecentEvents(ev.events)
         const p = await api.getPackages()
         if(p.packages) setPackages(p.packages)
         const t = await api.adminGetTransactions()
@@ -215,9 +218,16 @@ export default function Admin(){
     }catch(e){ console.error('Global reconcile failed', e); toast.show('Server error', 'error') }
   }
 
+  async function refreshEvents(){
+    try{
+      const ev = await api.adminGetEvents(100)
+      if(ev && ev.events) setRecentEvents(ev.events)
+    }catch(e){ console.error('Refresh events failed', e) }
+  }
+
   return (
     <div>
-      <h2>Admin Panel</h2>
+        <div className="card">
       <div style={{marginBottom:12,display:'flex',gap:12,flexWrap:'wrap'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <input placeholder="user email" value={activationEmail} onChange={e=>setActivationEmail(e.target.value)} style={{width:200}} />
@@ -231,6 +241,22 @@ export default function Admin(){
             <option value="external">Mark as external payment</option>
           </select>
           <button className="btn" onClick={activateByEmail}>Activate by email</button>
+        </div>
+        <div className="card">
+          <h3>Recent Events (IP / Pageviews / Logins)</h3>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <div style={{marginBottom:8}}>
+              <button className="btn ghost" onClick={refreshEvents}>Refresh events</button>
+            </div>
+            {recentEvents.length===0 ? <div className="small muted">No events</div> : (
+              recentEvents.map(ev => (
+                <div key={ev.id} style={{display:'flex',justifyContent:'space-between',gap:12}} className="small muted">
+                  <div>{ev.createdAt} — {ev.type || 'pageview'} — IP: {ev.ip || '—'}</div>
+                  <div>{ev.email ? ev.email : (ev.userId ? ev.userId : 'anonymous')}</div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         <div style={{display:'flex',alignItems:'center',gap:8}}>

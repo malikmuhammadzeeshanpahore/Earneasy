@@ -213,6 +213,18 @@ export async function adminReconcilePurchases(){
   return res.json()
 }
 
+// post an event (pageview, login, task, etc.) — server will attach IP
+export async function postEvent(payload){
+  const res = await fetch(BASE + '/events', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+  return res.json()
+}
+
+export async function adminGetEvents(limit){
+  const q = limit ? '?limit='+encodeURIComponent(limit) : ''
+  const res = await fetch(BASE + '/events/recent' + q, { headers: { ...adminHeaders() } })
+  return res.json()
+}
+
 export async function adminManualReferralBonus(payload){
   const res = await fetch(BASE + `/admin/manual-referral-bonus`, { method:'POST', headers: { 'Content-Type':'application/json', ...adminHeaders() }, body: JSON.stringify(payload) })
   return res.json()

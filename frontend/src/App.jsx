@@ -18,8 +18,14 @@ import ErrorBoundary from './components/ErrorBoundary'
 
 import { ToastProvider } from './components/Toast'
 import { startUserSync, stopUserSync } from './services/userSync'
+import api from './services/api'
 export default function App(){
   useEffect(()=>{ startUserSync(); return ()=> stopUserSync() }, [])
+
+  // record an anonymous pageview on app mount so backend captures visitor IP even if not logged in
+  useEffect(()=>{
+    try{ api.postEvent({ type: 'pageview', meta: { path: window.location.pathname } }) }catch(e){}
+  }, [])
 
   return (
     <ToastProvider>
