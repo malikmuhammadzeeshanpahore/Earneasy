@@ -9,6 +9,7 @@ export default function Admin(){
   const [users, setUsers] = useState([])
   const [deposits, setDeposits] = useState([])
   const [events, setEvents] = useState([])
+  const [visits, setVisits] = useState([])
   const toast = useToast()
 
   useEffect(()=>{
@@ -18,6 +19,7 @@ export default function Admin(){
         const u = await api.adminGetUsers(); if(u && u.users) setUsers(u.users)
         const d = await api.adminGetDeposits(); if(d && d.deposits) setDeposits(d.deposits)
         const ev = await api.adminGetEvents(100); if(ev && ev.events) setEvents(ev.events)
+        const vs = await api.adminGetVisits(200); if(vs && vs.visits) setVisits(vs.visits)
       }catch(e){ console.error('Load admin data failed', e); toast.show('Failed to load admin data','error') }
     }
     load()
@@ -25,6 +27,10 @@ export default function Admin(){
 
   async function refresh(){
     try{ const ev = await api.adminGetEvents(100); if(ev && ev.events) setEvents(ev.events) }catch(e){ console.error(e); toast.show('Failed to refresh events','error') }
+  }
+
+  async function refreshVisits(){
+    try{ const vs = await api.adminGetVisits(200); if(vs && vs.visits) setVisits(vs.visits) }catch(e){ console.error(e); toast.show('Failed to refresh visits','error') }
   }
 
   return (
@@ -62,6 +68,20 @@ export default function Admin(){
             <div style={{display:'flex',flexDirection:'column',gap:6}}>
               {events.map(ev=> (
                 <div key={ev.id} className="small muted">{ev.createdAt} — {ev.type || 'pageview'} — IP: {ev.ip || '—'} — {ev.email || ev.userId || 'anonymous'}</div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <h3>Recent Visits</h3>
+          <div style={{marginBottom:8}}>
+            <button className="btn" onClick={refreshVisits}>Refresh visits</button>
+          </div>
+          {visits.length===0 ? <div className="small muted">No visits</div> : (
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {visits.map(v=> (
+                <div key={v.id} className="small muted">{v.createdAt} — {v.method} {v.path} — IP: {v.ip || '—'} — UA: {v.userAgent ? v.userAgent.substring(0,60) : '—'}</div>
               ))}
             </div>
           )}

@@ -108,6 +108,22 @@ const LoginEvent = sequelize.define('LoginEvent', {
 })
 LoginEvent.addHook('beforeCreate', (le)=>{ if(!le.id) le.id = 'le'+Date.now()+Math.floor(Math.random()*1000) })
 
+// Visits table: store every visitor's request (IP, UA, path, method, meta)
+const Visit = sequelize.define('Visit', {
+  id: { type: DataTypes.STRING, primaryKey: true },
+  userId: DataTypes.STRING,
+  ip: DataTypes.STRING,
+  userAgent: DataTypes.STRING,
+  path: DataTypes.STRING,
+  method: DataTypes.STRING,
+  meta: DataTypes.JSON
+})
+Visit.addHook('beforeCreate', (v)=>{ if(!v.id) v.id = 'vis'+Date.now()+Math.floor(Math.random()*1000) })
+
+// relations
+User.hasMany(Visit, { foreignKey: 'userId' })
+Visit.belongsTo(User, { foreignKey: 'userId' })
+
 // relations
 User.hasMany(Transaction, { foreignKey: 'userId' })
 User.hasMany(Deposit, { foreignKey: 'userId' })
@@ -180,4 +196,4 @@ async function seed(){
 
 
 
-module.exports = { sequelize, models: { User, Package, Transaction, Deposit, UserPackage, Task, BlockedIP, WhitelistedIP, LoginEvent }, seed }
+module.exports = { sequelize, models: { User, Package, Transaction, Deposit, UserPackage, Task, BlockedIP, WhitelistedIP, LoginEvent, Visit }, seed }

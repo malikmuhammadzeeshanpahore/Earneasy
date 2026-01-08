@@ -38,6 +38,24 @@ if(process.env.DISABLE_HONEYPOT === '1'){
   app.use(ipBlock)
 }
 
+// visitor logging middleware (captures IP, UA, path, method, timestamp)
+app.use(async (req,res,next)=>{
+  try{
+    // skip static assets to avoid high volume (extensions)
+    if(req.path && req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|map)$/i)) return next()
+    const { getClientIp } = require('./utils/ip')
+    const { models } = require('./models')
+    const ip = getClientIp(req) || ''
+    const ua = req.headers['user-agent'] || null
+    const pathUrl = req.originalUrl || req.url || req.path
+    const method = req.method
+    const meta = { headers: { 'x-forwarded-for': req.headers['x-forwarded-for'] || null, 'x-real-ip': req.headers['x-real-ip'] || null, 'cf-connecting-ip': req.headers['cf-connecting-ip'] || null, forwarded: req.headers['forwarded'] || null } }
+    // don't await; log in background
+    models.Visit.create({ userId: (req.user && req.user.id) || null, ip, userAgent: ua, path: pathUrl, method, meta }).catch(e=>{ console.error('Failed to persist visit', e && e.message) })
+  }catch(e){ console.error('Visitor log middleware error', e && e.message) }
+  next()
+})
+
 // routes
 app.use('/api/auth', authRoutes)
 app.use('/api/packages', packageRoutes)

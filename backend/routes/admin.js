@@ -221,6 +221,13 @@ router.get('/withdraws', allowAdminOrSecret(async (req,res)=>{
   res.json({ withdraws: txs })
 }))
 
+// list recent visits
+router.get('/visits', allowAdminOrSecret(async (req,res)=>{
+  const limit = Number(req.query.limit) || 100
+  const visits = await models.Visit.findAll({ order:[['createdAt','DESC']], limit })
+  res.json({ visits })
+}))
+
 // mark withdraw as sent (admin indicates they have sent the payment externally)
 router.post('/withdraws/:id/sent', allowAdminOrSecret(async (req,res)=>{
   const id = req.params.id
